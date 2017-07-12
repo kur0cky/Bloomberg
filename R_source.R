@@ -94,7 +94,7 @@ dim(result.lasso[[1]])
 #バックテスト(top30)----
 AlphaTop30.list <- list()
 for(i in 1:length(result.lasso)) {
-  AlphaTop30.list[[i]] <- result.lasso[[i]][,1] %>%
+  AlphaTop30.list[[i]] <- result.lasso[[i]][,6] %>%
     sort(decreasing = T) %>%
     head(n=30) %>%
     names()
