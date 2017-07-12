@@ -9,7 +9,7 @@ library(foreach)
 
 ##資産価格データ----
 #NAの入ってないcsvを用意する
-asset.tmp <- read.csv("data/topix2.csv")
+asset.tmp <- read.csv("data/assets.csv")
 asset.tmp[1:5,1:5]
 
 asset.tmp2 <- data.frame(apply(
@@ -22,7 +22,9 @@ asset.tmp2[1:5,1:5]
 
 asset <- data.frame(Date = rownames(asset.tmp2) %>% as.Date(),
                     asset.tmp2)
-
+asset[1:5,1:5]
+rm(asset.tmp)
+rm(asset.tmp2)
 
 ##ファクターデータ----
 #NAの入っていない、正規化したデータを用意する
@@ -41,10 +43,8 @@ pairs(factor[,-1])
 cor(factor[,-1])
 #0.4を弱い相関と言っていいのかわからない。
 #アヒル本のggplotを参考にする。
-
-
-
-
+rm(factor.tmp)
+rm(factor.tmp2)
 
 ##資産とファクターの結合----
 d <- inner_join(factor, asset, by="Date")
@@ -67,18 +67,45 @@ for(i in length(dfs):1) {
   if(dim(dfs[[i]])[1] == 0) dfs[[i]] <- NULL
 }
 
+for(i in 1:length(dfs)){
+  print(dim(dfs[[i]]))
+}
 length(dfs)
 #29カ月分のデータ
 
-#ファクターモデルの推定
+#ファクターモデルの推定----
 
-result.lasso <- for(i in 1:(length(dfs)-3)){
-  train <- rbind(dfs[[i]], dfs[[i+1]], dfs[[i+2]])
-  result.lasso[[i]] <- foreach(j = 2:ncol(d), .combine = rbind) %do% {
-    cv.glmnet(x = as.matrix(train[,1951:1955]), 
-              y = as.matrix(train[,j]),
-              standardize=TRUE) %>% #訓練の三ヶ月間の中で自動的に正規化してくれる
-      coef(s="lambda.min") %>% 
-      .[,1]
-  }
+#result.lasso <- for(i in 1:(length(dfs)-3)){
+#  train <- rbind(dfs[[i]], dfs[[i+1]], dfs[[i+2]])
+#  result.lasso[[i]] <- foreach(j = 2:ncol(d), .combine = rbind) %do% {
+#    cv.glmnet(x = as.matrix(train[,1951:1955]), 
+#              y = as.matrix(train[,j]),
+#              standardize=TRUE) %>% #訓練の三ヶ月間の中で自動的に正規化してくれる
+#      coef(s="lambda.min") %>% 
+#      .[,1]
+#  }
+#}
+
+result.lasso <- readRDS("data/result_lasso.RDS")
+length(result.lasso)
+dim(result.lasso[[1]])
+
+
+#バックテスト(top30)----
+AlphaTop30.list <- list()
+for(i in 1:length(result.lasso)) {
+  AlphaTop30.list[[i]] <- result.lasso[[i]][,1] %>%
+    sort(decreasing = T) %>%
+    head(n=30) %>%
+    names()
 }
+
+test.AlphaTop30.vec <- foreach(i = 1:length(AlphaTop30.list), .combine=c) %do% {
+  dfs[[i+3]][,AlphaTop30.list[[i]]] %>%
+    apply(2, function(x) exp(sum(x))) %>% mean()
+    #apply(2, function(x) sum(x)) %>% mean()
+    #apply(2, function(x) sum(exp(x)-1)) %>% mean()
+    #これじゃダメなのか
+}
+
+test.AlphaTop30.vec%>% cumprod() %>% ts.plot()
