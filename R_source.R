@@ -91,7 +91,7 @@ length(result.lasso)
 dim(result.lasso[[1]])
 
 
-#バックテスト(top30)----
+#バックテスト(alpha top30)----
 AlphaTop30.list <- list()
 for(i in 1:length(result.lasso)) {
   AlphaTop30.list[[i]] <- result.lasso[[i]][,6] %>%
@@ -109,3 +109,29 @@ test.AlphaTop30.vec <- foreach(i = 1:length(AlphaTop30.list), .combine=c) %do% {
 }
 
 test.AlphaTop30.vec%>% cumprod() %>% ts.plot()
+
+#バックテスト(top30)----
+top30.names.list <- list()
+
+for(i in 1:length(result.lasso)) {
+top30.names.list[[i]] <- matrix(ncol=ncol(result.lasso[[1]]), nrow=30)  
+  for(j in 1:ncol(result.lasso[[1]])) {
+    top30.names.list[[i]][,j] <- result.lasso[[i]][,j] %>% 
+      sort(decreasing = T) %>% 
+      head(n=30) %>% 
+      names() %>% as.vector()
+  }
+}
+
+top30.test.df <- matrix(nrow=length(result.lasso), ncol=ncol(result.lasso[[1]]))
+
+for(i in 1:length(result.lasso)){
+  for(j in 1:ncol((result.lasso[[1]]))) {
+    top30.test.df[i,j] <- dfs[[i+3]][,top30.names.list[[i]][,j]] %>% 
+      apply(2, function(x) exp(sum(x))) %>% mean()
+  }
+}
+
+top30.test.df %>%
+  apply(2,cumprod) %>%
+  ts.plot(col=1:6)
