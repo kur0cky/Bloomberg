@@ -62,14 +62,17 @@ length(dfs)
 for(i in 1:length(dfs)){
   print(dim(dfs[[i]]))
 }
+rm(i)
 
 for(i in length(dfs):1) {
   if(dim(dfs[[i]])[1] == 0) dfs[[i]] <- NULL
 }
+rm(i)
 
 for(i in 1:length(dfs)){
   print(dim(dfs[[i]]))
 }
+rm(i)
 length(dfs)
 #29カ月分のデータ
 
@@ -104,7 +107,8 @@ top30.names.list[[i]] <- matrix(ncol=ncol(result.lasso[[1]]), nrow=30)
       names() %>% as.vector()
   }
 }
-
+rm(i)
+rm(j)
 top30.test.df <- matrix(nrow=length(result.lasso), ncol=ncol(result.lasso[[1]]))
 
 for(i in 1:length(result.lasso)){
@@ -113,10 +117,13 @@ for(i in 1:length(result.lasso)){
       apply(2, function(x) exp(sum(x))) %>% mean()
   }
 }
+rm(i)
+rm(j)
 colnames(top30.test.df) <- colnames(result.lasso[[1]])
 top30.test.df %>%
-  apply(2,cumprod) %>%
-  ts.plot(col=1:6)
+#  apply(2,cumprod) %>%
+#　累積リターンにするならコメントはずす
+    ts.plot(col=1:6)
 legend("topleft",c("Alpha", "TOPIX", "VIX", "value", "size", "JPY_USD"),
        col=1:6,
        lwd=2, cex=0.7)
@@ -131,6 +138,7 @@ riskPremium <- foreach(i = 1:26, .combine = rbind) %do% {
   riskPremium.tmp <- t(replicate) * result.lasso[[i]][,1]
   apply(riskPremium.tmp, 2, sum)
 }
+rm(i)
 rm(replicate)
 rm(riskPremium.tmp)
 
