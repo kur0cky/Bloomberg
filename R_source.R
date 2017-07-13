@@ -91,24 +91,6 @@ length(result.lasso)
 dim(result.lasso[[1]])
 
 
-#バックテスト(alpha top30)----
-AlphaTop30.list <- list()
-for(i in 1:length(result.lasso)) {
-  AlphaTop30.list[[i]] <- result.lasso[[i]][,6] %>%
-    sort(decreasing = T) %>%
-    head(n=30) %>%
-    names()
-}
-
-test.AlphaTop30.vec <- foreach(i = 1:length(AlphaTop30.list), .combine=c) %do% {
-  dfs[[i+3]][,AlphaTop30.list[[i]]] %>%
-    apply(2, function(x) exp(sum(x))) %>% mean()
-    #apply(2, function(x) sum(x)) %>% mean()
-    #apply(2, function(x) sum(exp(x)-1)) %>% mean()
-    #これじゃダメなのか
-}
-
-test.AlphaTop30.vec%>% cumprod() %>% ts.plot()
 
 #バックテスト(top30)----
 top30.names.list <- list()
@@ -131,7 +113,31 @@ for(i in 1:length(result.lasso)){
       apply(2, function(x) exp(sum(x))) %>% mean()
   }
 }
-
+colnames(top30.test.df) <- colnames(result.lasso[[1]])
 top30.test.df %>%
   apply(2,cumprod) %>%
   ts.plot(col=1:6)
+legend("topleft",c("Alpha", "TOPIX", "VIX", "value", "size", "JPY_USD"),
+       col=1:6,
+       lwd=2, cex=0.7)
+
+
+#リスク・プレミアム----
+
+
+riskPremium <- foreach(i = 1:26, .combine = rbind) %do% {
+  replicate <- diag(5) %*% ginv(as.matrix(result.lasso[[i]][,-1]))
+  
+  riskPremium.tmp <- t(replicate) * result.lasso[[i]][,1]
+  apply(riskPremium.tmp, 2, sum)
+}
+rm(replicate)
+rm(riskPremium.tmp)
+
+ts.plot(riskPremium, col=c("black", "red", "yellow", "blue", "green"))
+legend("topleft",c("TOPIX", "VIX", "value_growth", "size", "JPY_USD"))
+
+ts.plot(riskPremium[,-2], col=c("black", "red", "blue", "green"))
+legend("topleft",c("TOPIX", "value_growth", "size", "JPY_USD"),
+       col=c("black", "red", "blue", "green"),
+       lwd=2, cex=0.7)
