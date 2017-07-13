@@ -1,2 +1,6 @@
 .Rhistory
 .Ruserdata
+/report/*.aux
+/report/*.dvi
+/report/*.log
+/report/*.gz
