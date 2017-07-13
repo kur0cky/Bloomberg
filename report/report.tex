@@ -7,9 +7,10 @@
 \usepackage{amssymb}
 \usepackage{bm}
 \usepackage{amsfonts}
+\usepackage{here}
 \begin{document}
-\title{Bloomberg Global Investment Contest\\}
-\author{東京理科大学工学部第一部経営工学科\\黒木 裕鷹}
+\title{Contest\\}
+\author{東京理科大学工学部経営工学研究科\\新田 翔 \and 東京理科大学工学部第一部経営工学科\\黒木 裕鷹}
 \maketitle
 \begin{abstract}
 
@@ -191,8 +192,24 @@ S\&PがVIXと同様の手法で算出している日本市場の30日インプ�
 \section{データのクリーニング・概観}
 対象期間とした2015年1月$\sim$2017年5月において，何らかの理由(そもそもまだ出来ていない，上場していない，等の)により価格データが欠けている企業が見受けられたため，当該企業を除外した．さらに対数収益率を取ることにより全営業日との比率を算出した．
 
-対象銘柄すべての価格推移をプロットすることは不可能であるため，使用するファクターについてのみ時系列プロットを行い，以下の図に示した．また，多重共線性などの問題が存在するならばそれを回避するため，ファクターの散布図を以下の図に，相関行列を算出し以下の表にまとめた．
+対象銘柄すべての価格推移をプロットすることは不可能であるため，使用するファクターについてのみ時系列プロットを行い，以下の図\ref{fig:factor_plot}に示した．また，多重共線性などの問題が存在するならばそれを回避するため，散布図とヒストグラム、相関行列を図\ref{fig:factor_cor}にまとめた．
 %対数収益率について
+
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[width=15cm]{./fig/factor_plot.png}
+		\caption{ファクターの時系列プロット}
+		\label{fig:factor_plot}
+	\end{center}
+\end{figure}
+
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[width=15cm]{./fig/factor_cor.png}
+		\caption{ファクター間の関係}
+		\label{fig:factor_cor}
+	\end{center}
+\end{figure}
 \section{ファクターモデルの推定}
 扱いやすい日次終値データを対象としていることに加え時系列データの性質により，推定するパラメータ数に対し十分な標本が得られないという問題がある．また市場の性質が不変であるとは考えにくく，ゆるやか(もしくは何らかのショックにより急激に)変化していくものと思われる．そのためバックテストも見据え，3カ月分のデータを用いてモデルを推定し，その先1カ月を対象にバックテストを行うこととした．
 
