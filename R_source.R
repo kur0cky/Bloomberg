@@ -1,9 +1,11 @@
+# load packages
 library(glmnet)
 library(tidyverse)
 library(lubridate)
 library(xts)
 library(MASS)
 library(foreach)
+library(GGally)
 
 #データの整理と概観----
 
@@ -39,8 +41,8 @@ plot(ts(factor.tmp2))
 factor <- data.frame(Date = as.Date(rownames(factor.tmp2)),
                      factor.tmp2)
 factor[1:5,1:5]
-pairs(factor[,-1])
-cor(factor[,-1])
+GGally::ggpairs(factor[,-1])
+
 #0.4を弱い相関と言っていいのかわからない。
 #アヒル本のggplotを参考にする。
 rm(factor.tmp)
@@ -93,7 +95,27 @@ result.lasso <- readRDS("data/result_lasso.RDS")
 length(result.lasso)
 dim(result.lasso[[1]])
 
-
+# NOTE ------------------------------------------------------------------
+# asset : 収益率と日付のデータ
+asset[1:5,1:5]
+# factor : 各Factorの収益率と日付のデータ
+# ggpairsで相関係数も出せる
+factor[1:5,1:5]
+GGally::ggpairs(factor[,-1])
+# d : assetとfactorを日付列でmergeしたもの
+# 562 days
+d[1:5,1:10]
+dim(d)
+# dfs : dを月ごとに分けたもの
+# 29ヶ月分ある（from 2015-01 to 2017-05）
+dfs[[1]][1:10,1:7]
+length(dfs)
+# result.lasso : 各資産に関して、factor modelのbeta値（各月）
+# 3ヶ月分を用いて推定してるため、dfsのはじめ3ヶ月分は推定のみに使われる
+# そのため26ヶ月分ある（from 2015-04 to 2017-05）
+result.lasso[[1]][1:5,]
+length(result.lasso)
+# ------------------------------------------------------------------------
 
 #バックテスト(top30)----
 top30.names.list <- list()
