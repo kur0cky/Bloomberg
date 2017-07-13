@@ -121,7 +121,7 @@ rm(i)
 rm(j)
 colnames(top30.test.df) <- colnames(result.lasso[[1]])
 top30.test.df %>%
-#  apply(2,cumprod) %>%
+  apply(2,cumprod) %>%
 #　累積リターンにするならコメントはずす
     ts.plot(col=1:6)
 legend("topleft",c("Alpha", "TOPIX", "VIX", "value", "size", "JPY_USD"),
