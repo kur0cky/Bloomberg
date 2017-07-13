@@ -6,6 +6,8 @@ library(xts)
 library(MASS)
 library(foreach)
 library(GGally)
+library(ellipse)
+library(hexbin)
 
 #データの整理と概観----
 
@@ -171,3 +173,4 @@ ts.plot(riskPremium[,-2], col=c("black", "red", "blue", "green"))
 legend("topleft",c("TOPIX", "value_growth", "size", "JPY_USD"),
        col=c("black", "red", "blue", "green"),
        lwd=2, cex=0.7)
+
