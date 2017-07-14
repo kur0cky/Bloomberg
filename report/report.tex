@@ -105,8 +105,6 @@ Var(R_P) &= \beta_P^2 Var(R_M) + Var(\varepsilon_P)\\
 \end{equation}
 この$\beta_P$がポートフォリオのマーケットに対する感度になり，$\alpha_P$がリスク・プレミアムとなる．
 %リスク・プレミアムでいいの？
-\section{Fama-Frenchの3ファクターモデル}
-%本当に必要？？あとまわし
 
 \section{マルチ・ファクターモデル}
 ここでは，各資産の収益率が$m$個の共通要因に依存するマルチ・ファクターモデルを考える．金融資産$i$の収益率$r_i$は企業特有の部分$\varepsilon_i$と共通要因であるファクター$F_k(k=1,\cdots,m)$によって決定される．また，$\varepsilon_i$は資産間で相互に無相関であると仮定すると，$r_i$は以下のように表される．
@@ -125,6 +123,8 @@ R_P &= \alpha_P + \beta_{P,1} F_1 + \beta_{P,2} F_2 + \cdots + \beta_{P,m} F_m +
 
 %次に，式(\ref{eq:multi})の分散を考える．
 %ポートフォリオの分散は求めたほうが良いの？
+\section{Fama-Frenchの3ファクターモデル}
+%本当に必要？？あとまわし
 \section{APT}
 %ルーエンバーガーの本
 %ファクターのプレミアムとかみ合わない話がある
@@ -242,6 +242,53 @@ S\&PがVIXと同様の手法で算出している日本市場の30日インプ�
 \end{figure}
 \section{バックテスト}
 様々なポートフォリオ
+
+\section{ポートフォリオ選択}
+リスク・プレミアムを算出したことによりファクターごとのリスクを取る価値が定量化できたが、ポートフォリオの構成銘柄は10$\sim$30銘柄でなくてはならない。銘柄数を考慮しなければ、リスクプレミアムの合計を目的関数とした最適化問題を考えればよいことになる。
+
+ポートフォリオの収益率ファクターに対する感度は2.2節の式(\ref{eq:multi})により与えられていた。今回は5ファクターモデルを考えているため、ポートフォリオの収益は次のように与えられる。
+\begin{equation}
+\begin{split}
+R_P &= \alpha_P + \beta_{P,1} F_1 + \beta_{P,2} F_2 + \cdots + \beta_{P,5} F_m + \varepsilon_P\\
+&=\sum_{i=1}^N \alpha_i + F_1 \sum_{i=1}^N w_i \beta_{i,1} + \cdots + F_5 \sum_{i=1}^N w_i \beta_{i,m} + \sum_{i=1}^N w_i\varepsilon_i\\
+&= \sum_{i=1}^N \alpha_i + \sum_{k=1}^5 \sum_{i=1}^N w_i \beta_{i,k} F_k + \sum_{i=1}^N w_i\varepsilon_i
+\label{eq:port}
+\end{split}
+\end{equation}
+いま、ファクター$F_1,\cdots,F_5$のリスク・プレミアムが$\lambda_1,\cdots,\lambda_5$で与えられているとすると、ファクターのリスク・プレミアムを重みとした以下の最適化問題を考えるのが自然である。
+
+\begin{equation}
+\begin{split}
+\text{maximize : }\quad & \beta_{P,1}\lambda_1 + \beta_{P,2}\lambda_2 + \beta_{P,3}\lambda_3 + \beta_{P,4}\lambda_4 + \beta_{P,5}\lambda_5\\
+& = \sum_{k=1}^5 \sum_{i=1}^N w_i \beta_{i,k} F_k\\
+\text{subject to : }\quad & \sum_{i=1}^N w_i = 1\\
+& w_i \geq 0\qquad(i=1,\cdots,N)
+\end{split}
+\label{eq:port_optim}
+\end{equation}
+式(\ref{eq:port_optim})の最適化問題のうち、$F_k, \beta_{i,k}$は推定済みであり、$w_i$のみが変数である。よってこれは線形計画問題となり、シンプレックス法などのアルゴリズムにより簡単に解くことができる。
+
+次に銘柄数を考慮する。10$\sim$30銘柄に絞り込まなければならないので、この場合の最適化問題は以下のように定式化できる。
+
+\begin{equation}
+\begin{split}
+\text{maximize : }\quad & \beta_{P,1}\lambda_1 + \beta_{P,2}\lambda_2 + \beta_{P,3}\lambda_3 + \beta_{P,4}\lambda_4 + \beta_{P,5}\lambda_5\\
+& = \sum_{k=1}^5 \sum_{i=1}^N w_i \beta_{i,k} F_k\\
+\text{subject to : }\quad & \sum_{i=1}^N w_i = 1\\
+& w_i \geq 0\qquad(i=1,\cdots,N)\\
+& \sum_i^N w_i / w_i
+\end{split}
+\label{eq:port_optim}
+\end{equation}
+
+\begin{itembox}[l]{ポートフォリオ選択の手順}
+\begin{enumerate}
+\item 直近3ヶ月のデータより推定したファクターごとのリスク・プレミアムのうち、最もプレミアムの大きいファクターへの感度が高いもの上位100銘柄を選択する。
+\item 1で選択した100銘柄のうち、直近3ヶ月のモメンタムが高い30銘柄を選択
+\item 2で選択した30銘柄により等加重ポートフォリオを構成
+\end{enumerate}
+\end{itembox}
+
 \chapter{途中経過}
 \section{提出したポートフォリオ}
 
@@ -293,4 +340,8 @@ S\&PがVIXと同様の手法で算出している日本市場の30日インプ�
 \end{table}
 \section{7月中のパフォーマンス}
 \chapter{課題とリバランス}
+\section{課題}
+1回目のポートフォリオ提出に間に合わなかった分析や、提出後に浮かんできた疑問点、考えうる批判など数々の課題がある。ここではそれらを列挙し、考察していく。
+\subsection{リスク・プレミアム算出後のポートフォリオ選択に関して}
+
 \end{document}
