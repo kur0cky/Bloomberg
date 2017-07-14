@@ -120,19 +120,31 @@ length(result.lasso)
 # ------------------------------------------------------------------------
 
 #バックテスト(top30)----
-top30.names.list <- list()
 
-for(i in 1:length(result.lasso)) {
-top30.names.list[[i]] <- matrix(ncol=ncol(result.lasso[[1]]), nrow=30)  
-  for(j in 1:ncol(result.lasso[[1]])) {
-    top30.names.list[[i]][,j] <- result.lasso[[i]][,j] %>% 
-      sort(decreasing = T) %>% 
-      head(n=30) %>% 
-      names() %>% as.vector()
-  }
-}
-rm(i)
-rm(j)
+top30.names.list <- lapply(result.lasso, function(x){
+  apply(x, 2, function(y){
+    sort(y, decreasing = TRUE) %>% 
+      head(n = 30) %>% 
+      names %>% as.vector
+  })
+}) 
+
+# 上のようにapplyを使っても書ける
+# 計算量が多いなら、外側のlapplyをpforeachにして、並列計算
+# 極力for文ネストは避けたい、計算量が多いときは特に
+#top30.names.list <- list()
+#for(i in 1:length(result.lasso)) {
+ # top30.names.list[[i]] <- matrix(ncol=ncol(result.lasso[[1]]), nrow=30)  
+#  for(j in 1:ncol(result.lasso[[1]])) {
+ #   top30.names.list[[i]][,j] <- result.lasso[[i]][,j] %>% 
+  #    sort(decreasing = T) %>% 
+   #   head(n=30) %>% 
+    #  names() %>% as.vector()
+  #}
+#}
+#rm(i)
+#rm(j)
+
 top30.test.df <- matrix(nrow=length(result.lasso), ncol=ncol(result.lasso[[1]]))
 
 for(i in 1:length(result.lasso)){
