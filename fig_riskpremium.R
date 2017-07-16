@@ -3,6 +3,8 @@ library(ellipse)
 library(hexbin)
 library(ggplot2)
 library(tidyverse)
+library(foreach)
+library(MASS)
 
 
 #データの準備----
@@ -30,6 +32,15 @@ rm(riskPremium.tmp2)
 riskPremium_tidy <- riskPremium.tmp2 %>% 
   gather(type, value, -time)
 
+date_vec <- seq(as.Date("2015-03-01"), as.Date("2017-04-01"), by = "1 month")
+riskPremium_tidy$time <- date_vec
+
 ggplot(riskPremium_tidy, aes(x=time, y=value))+
   geom_line(aes(group=type, colour=type))+
-  theme_bw()
+  theme_bw() +
+  scale_colour_hue(name = "factor") +
+  scale_x_date(date_breaks = "3 months", date_labels = "%y-%m") +
+  labs(x = "Date", y = "risk premium")
+# 上の図は15-03から17-04まで
+# "15-03"は15-01から15-03までの3ヶ月分のデータを用いて
+# 算出したrisk premiumであることに注意

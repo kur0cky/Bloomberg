@@ -30,4 +30,5 @@ factor.tmp <- factor[,-1]
 ggplot(factor_tidy, aes(x=Date, y=value))+
   geom_line()+
   facet_grid(type~. ,scales="free_y")+
-  theme_bw()
+  theme_bw()+
+  scale_x_date(date_breaks = "4 months", date_labels = "%Y-%m")
