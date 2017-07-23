@@ -9,8 +9,8 @@
 \usepackage{amsfonts}
 \usepackage{here}
 \begin{document}
-\title{Contest\\}
-\author{東京理科大学工学部経営工学研究科\\新田 翔 \and 東京理科大学工学部第一部経営工学科\\黒木 裕鷹}
+\title{Bloomberg Global Investment Contest\\}
+\author{東京理科大学工学部第一部経営工学科\\黒木 裕鷹 \and 東京理科大学工学部第一部経営工学科\\ 小坪 琢人 \and 東京理科大学工学部第一部経営工学科\\ 永井直哉}
 \maketitle
 \begin{abstract}
 
@@ -175,7 +175,8 @@ Var(R_P) &= \beta_P^2 Var(R_M) + Var(\varepsilon_P)\\
 \section{マルチ・ファクターモデル}
 ここでは，各資産の収益率が$m$個の共通要因に依存するマルチ・ファクターモデルを考える．金融資産$i$の収益率$r_i$は企業特有の部分$\varepsilon_i$と共通要因であるファクター$F_k(k=1,\cdots,m)$によって決定される．また，$\varepsilon_i$は資産間で相互に無相関であると仮定すると，$r_i$は以下のように表される．
 \begin{equation}
-r_i = \alpha_i + \beta_{i,1}F_1 + \beta_{i,2}F_2 + \cdots + \beta_{i,k}F_k + \cdots + \beta_{i,N}F_m + \varepsilon_i
+r_i = \alpha_i + \beta_{i,1}F_1 + \beta_{i,2}F_2 + \cdots + \beta_{i,k}F_k + \cdots + \beta_{i,m}F_m + \varepsilon_i
+\label{eq:multifactor}
 \end{equation}
 ここで，2.1節と同様，資産$i(i=1,\cdots,N)$の保有比率が$w_i$であるようなポートフォリオ$P$の収益率$R_P$を考えると以下のようになる．
 \begin{equation}
@@ -189,18 +190,35 @@ R_P &= \alpha_P + \beta_{P,1} F_1 + \beta_{P,2} F_2 + \cdots + \beta_{P,m} F_m +
 
 %次に，式(\ref{eq:multi})の分散を考える．
 %ポートフォリオの分散は求めたほうが良いの？
-\section{Fama-Frenchの3ファクターモデル}
-数あるマルチ・ファクターモデルのうち，最も知られているものはFama-Frenchの3ファクターモデルだろう．このモデルは市場ポートフォリオ，時価総額，簿価時価比率の3つをファクターとしている．数式としては，以下のように表されることが多い．
-\begin{equation}
-r_i - r_f = \beta_i^{MKT}(R_M - r_f) + \beta_i^{SMB}SMB + \beta_i^{HML}HML
-\label{eq:fama-french}
-\end{equation}
-ここで，$r_f$は無リスク利子率であり，長期国債の年利が用いられることが多い．また$SMB$はSmall Minus Bigの略であり，時価総額下位50\%の時価総額加重平均ポートフォリオから上位50\%の時価総額加重平均ポートフォリオを引いたものである．つまり，企業規模の小さい銘柄が大きい銘柄に対して余剰に得ている収益を表すファクターである．次にHMLであるが，これはHigh Minus Lowの略であり，簿価時価比率上位30\%の時価総額加重ポートフォリオから下位30\%の時価総額加重ポートフォリオを引いたものである．つまり，総資産額に比べて株価が割安になっている銘柄が割高な銘柄に対して余剰に得ている収益を表すファクターである．
 
 \section{APT}
-%ルーエンバーガーの本
-%ファクターのプレミアムとかみ合わない話がある
-%どーする
+
+\subsection{仮定}
+APTは式(\ref{eq:multifactor})のように，任意の資産$i$のリターンがマルチ・ファクターモデルで表され，$\varepsilon_i$は資産間で相互で無相関であると仮定される．ただし追加として，各ファクターの期待値が0でなければならない．これは，あらかじめ使用するファクターを正規化することにより解決する．以上APTの仮定についてまとめたものを以下に示した．
+
+\begin{itembox}[l]{APTの仮定}
+各資産$i$の収益率は以下のように表される．
+\begin{eqnarray}
+& r_i = \alpha_i + \beta_{i,1}F_1 + \cdots + \beta_{i,k}F_k + \cdots + \beta_{i,m}F_m + \varepsilon_i&\label{eq:APT_return} \\
+& E(\varepsilon_i) = 0 \qquad (i=1,2,\cdots,N)&\\
+& E(F_k) = 0 \qquad (k=1,2,\cdots,m)&\\
+& Cov(\varepsilon_i, \varepsilon_j) = 0 \qquad (i \neq j)& \label{eq:APT_cov}
+\end{eqnarray}
+\end{itembox}
+ここで，式(\ref{eq:APT_return})について期待値を取ると
+\begin{equation}
+E(r_i) = \alpha_i
+\end{equation}
+となる．つまり，式(\ref{eq:APT_return})における切片項は資産$i$の期待収益率に相当する．
+また，複数の資産で構成されるポートフォリオの収益率は式(\ref{eq:multi})と同様に記述される．さらに式(\ref{eq:APT_cov})により，ポートフォリオが十分な数の資産で構成されるとき，$\varepsilon_P$はないものとみなしてよい．十分に分散化されたポートフォリオの収益は，ファクターに対する感度のベクトル$(\beta_{P,1},\cdots,\beta_{P,m})$によってのみ特徴づけられる．
+
+APTの発想は，市場に裁定機会が存在しないことであった．
+この仮定により資産の価格付けが行われる．というのも，
+%%%どうする．加筆するか否か%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{APTによる価格付け}
+
+
 \section{ファクターのリスク・プレミアムの算出}
 資産$i$の収益率が式(\ref{eq:multi})で表されているとする．このとき資産を組み合わせて，特定のファクターへの感度のみが1で，その他のファクターへの感度が0になるポートフォリオを考える ．例えば，第1ファクターのみへの感度が1になるようなポートフォリオを$P_1$とすると，その収益率は
 \begin{equation}
@@ -209,6 +227,8 @@ R_{P_1} = \alpha_{P_1} + 1\times F_1 + 0\times F_2 + \cdots + 0\times F_m + \var
 と表せる．このとき，$\alpha_{P_1}$が第1ファクターのリスク・プレミアムとなる．
 
 次に，各ファクターのリスク・プレミアムを行列計算により求めることを考える．なお2.3節と同様，$N$資産に対する$m$ファクターモデルを考える．第$k(k=1,2,\cdots,m)$ファクターに対する感度のみが1であるポートフォリオを第kファクター・ポートフォリオ$P_k$とし，$P_k$における資産$i$のウェートを$w_{i,k}$とする．さらに，資産$i$の第$k$ファクターへの感度を$\beta_{i,k}$とすると，以下の式(\ref{eq:fp})のようにまとめることが出来る．
+
+
 
 \begin{equation}
 \left(
