@@ -404,7 +404,44 @@ S\&PがVIXと同様の手法で算出している日本市場の30日インプ�
 \section{データのクリーニング・概観}
 対象期間とした2015年1月$\sim$2017年5月において，何らかの理由（そもそもまだ起業されていない，上場していない，等）により価格データが欠けている企業が見受けられたため，当該企業を除外した．残った1948企業に対し，さらに対数差分をとることによって各営業日の日次収益率を算出した．
 
-対象銘柄すべての価格推移をプロットすることは冗長であるため割愛した．使用するファクターについてのみ時系列プロットを行い，以下の図\ref{fig:factor_plot}に示した．また，多重共線性などの問題が存在するならばそれを回避するため，散布図とヒストグラム、相関行列を図\ref{fig:factor_cor}にまとめた．図\ref{fig:factor_cor}の対角線上にある図が各ファクターのヒストグラムとカーネル密度、下三角の図がファクター間の散布図、上三角の図がファクター間の相関係数に100を掛けた数値を表している。
+対象銘柄すべての価格推移をプロットすることは冗長であるため割愛した．
+ファクターに関しては，前節のように各指数を加工した後に使用する．
+原系列である各指数について確認するため，Bloomberg端末にて該当期間のラインチャートを取得し，エクスポートした図を以下に示した．
+図\ref{fig:TOPIX}はTOPIXの原系列である．
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[width=15cm]{./fig/TOPIX.jpg}
+		\caption{TOPIXの時系列プロット}
+		\label{fig:TOPIX}
+	\end{center}
+\end{figure}
+図\ref{fig:VIX_JPY}の上段が日本円レート（対米ドル），下段がS\&Pが提供する日経VIXの原系列である．
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[width=15cm]{./fig/VIX_JPY.jpg}
+		\caption{日本円レートと日経VIXの時系列プロット}
+		\label{fig:VIX_JPY}
+	\end{center}
+\end{figure}
+図\ref{fig:Size}の上段がRussell Nomuraの提供する日本小型株インデックスと日本大型株インデックス，下段が日本小型株インデックスから日本大型株インデックスを減算したものである．
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[width=15cm]{./fig/Size.jpg}
+		\caption{日本円レートと日経VIXの時系列プロット}
+		\label{fig:Size}
+	\end{center}
+\end{figure}
+図\ref{fig:Value}の上段がRussell Nomuraの提供する日本バリュー株インデックスと日本グロース株インデックス，下段が日本バリュー株インデックスから日本グロース株インデックスを減算したものである．
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[width=15cm]{./fig/Value.jpg}
+		\caption{Russell Nomura日本株インデックス}
+		\label{fig:Value}
+	\end{center}
+\end{figure}
+
+使用するファクターについてのみ時系列プロットを行い，以下の図\ref{fig:factor_plot}に示した．
+また，多重共線性などの問題が存在するならばそれを回避するため，散布図とヒストグラム、相関行列を図\ref{fig:factor_cor}にまとめた．図\ref{fig:factor_cor}の対角線上にある図が各ファクターのヒストグラムとカーネル密度、下三角の図がファクター間の散布図、上三角の図がファクター間の相関係数に100を掛けた数値を表している。
 %対数収益率について書いたほうがいいのでは
 
 \begin{figure}[H]
