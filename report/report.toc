@@ -23,6 +23,6 @@
 \contentsline {section}{\numberline {3.6}ポートフォリオ選択}{16}
 \contentsline {chapter}{\numberline {第4章}途中経過}{19}
 \contentsline {section}{\numberline {4.1}提出したポートフォリオ}{19}
-\contentsline {section}{\numberline {4.2}7月中のパフォーマンス}{20}
+\contentsline {section}{\numberline {4.2}7月中のパフォーマンス}{19}
 \contentsline {section}{\numberline {4.3}リバランス}{21}
 \contentsline {chapter}{\numberline {第5章}今後の課題}{22}
