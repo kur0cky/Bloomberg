@@ -21,6 +21,8 @@
 \contentsline {section}{\numberline {3.5}様々なポートフォリオ}{15}
 \contentsline {subsection}{\numberline {3.5.1}各ベータの上位30銘柄による等加重ポートフォリオ}{16}
 \contentsline {section}{\numberline {3.6}ポートフォリオ選択}{16}
+\contentsline {subsection}{\numberline {3.6.1}戦略1}{16}
+\contentsline {subsection}{\numberline {3.6.2}戦略2}{17}
 \contentsline {chapter}{\numberline {第4章}途中経過}{19}
 \contentsline {section}{\numberline {4.1}提出したポートフォリオ}{19}
 \contentsline {section}{\numberline {4.2}7月中のパフォーマンス}{19}

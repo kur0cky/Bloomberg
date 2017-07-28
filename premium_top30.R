@@ -14,7 +14,7 @@ rm(assetpremium.tmp2)
 premium.top30
 
 
-
+ret.premium.top30 <- c()
 for(i in 1:length(result.lasso)){
   ret.premium.top30[i] <-  dfs[[i+3]][,premium.top30[[i]]] %>% 
     apply(2, function(x) exp(sum(x))) %>% mean()
@@ -25,4 +25,3 @@ ret.premium.top30 %>% ts.plot()
 
 ret.premium.top30 %>%
   cumprod()
-
