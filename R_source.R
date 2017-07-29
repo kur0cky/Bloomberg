@@ -45,6 +45,10 @@ factor <- data.frame(Date = as.Date(rownames(factor.tmp2)),
 factor[1:5,1:5]
 GGally::ggpairs(factor[,-1])
 
+factor2.tmp <- apply(factor[,-1], 2 ,function(x) scale(x))
+apply(factor2.tmp, 2, sd)
+summary(factor2.tmp)
+factor2 <- data.frame(Date=factor$Date, factor2.tmp)
 #0.4を弱い相関と言っていいのかわからない。
 #アヒル本のggplotを参考にする。
 rm(factor.tmp)
