@@ -19,6 +19,7 @@ riskPremium <- foreach(i = 1:26, .combine = rbind) %do% {
 
 top30.names.list <- list()
 
+
 for(i in 1:length(result.lasso)) {
   top30.names.list[[i]] <- matrix(ncol=ncol(result.lasso[[1]]), nrow=30)  
   for(j in 1:ncol(result.lasso[[1]])) {
@@ -52,7 +53,7 @@ benchmark.tmp2 %>% plot()
 
 
 benchmark <- apply.monthly(benchmark.tmp2, function(x) exp(sum(x)))
-benchmark %>% plot()
+benchmark[-c(1,2,3)] %>% cumprod() %>% plot()
 
 benchmark.ret <- cumprod(benchmark[-c(1,2,3)])
 benchmark.ret %>% plot(gpars=list(xlab="time", ylab="return(TOPIX)"))
