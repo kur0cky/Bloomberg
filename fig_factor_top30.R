@@ -78,7 +78,7 @@ ret.top30.tidy$time <- date_vec
 
 
 ggplot(data=ret.top30.tidy, aes(x=time, y=value))+
-  geom_line(aes(group=type, colour=type), size=0.8)+
+  geom_line(aes(group=type, colour=type), size=0.7)+
   theme_bw()+
   scale_colour_hue(name = "factor") +
   scale_x_date(date_breaks = "3 months", date_labels = "%y-%m") +

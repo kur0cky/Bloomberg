@@ -27,7 +27,7 @@ rm(riskPremium.tmp)
 riskPremium.tmp <- ts(riskPremium, start=c(2015,4), end=c(2017,5), frequency = 12)
 riskPremium.tmp2 <- data.frame(time = time(riskPremium.tmp), as.data.frame(riskPremium))
 colnames(riskPremium.tmp2) <- c("time", "TOPIX", "VIX", "Value", "Size", "JPY_USD")
-riskPremium_tidy <- riskPremium.tmp2 %>% 
+riskPremium_tidy <- riskPremium.tmp2[,-3] %>% 
   gather(type, value, -time)
 rm(riskPremium.tmp)
 rm(riskPremium.tmp2)
@@ -47,8 +47,8 @@ date_vec <- seq(as.Date("2015-03-01"), as.Date("2017-04-01"), by = "1 month")
 riskPremium_tidy$time <- date_vec
 
 ggplot(riskPremium_tidy, aes(x=time, y=value))+
-<<<<<<< HEAD
-  geom_line(aes(group=type, colour=type))+
+#<<<<<<< HEAD
+  geom_line(aes(group=type, colour=type), size=0.7)+
   theme_bw() +
   scale_colour_hue(name = "factor") +
   scale_x_date(date_breaks = "3 months", date_labels = "%y-%m") +
