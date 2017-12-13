@@ -1,0 +1,170 @@
+---
+title: "without_VIX"
+author: "Yutaka Kuroki"
+date: "2017年12月12日"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r library}
+library(tidyverse)
+library(foreach)
+library(doParallel)
+library(lubridate)
+```
+
+
+```{r data}
+d.tmp <- read.csv("E:/Git/Bloomberg/data/assets.csv")
+rownames(d.tmp) <- d.tmp[,1]
+d <- data.frame(date = as.Date(rownames(d.tmp)[-1]),
+                apply(d.tmp[,-1] %>% na.omit(), 2, function(x){diff(log(x))}))
+```
+
+```{r factor}
+factor.tmp <- read.csv("E:/Git/Bloomberg/data/factors.csv")[,-1] %>% 
+  mutate(date = as.Date(Date)) %>% 
+  dplyr::select(-Date)
+```
+
+```{r lasso}
+
+f.lasso <- function(return, factor) {
+  registerDoParallel(cores = 7)
+  a <- foreach(i = 1:(return %>% dplyr::select(-date) %>% ncol()),
+               .combine = rbind,
+               .packages = c("tidyverse", "glmnet"),
+               .inorder = TRUE) %dopar% {
+                 cv.glmnet(x = factor %>% dplyr::select(-date) %>% as.matrix(),
+                           y = return %>% dplyr::select(-date) %>% .[,i] %>% as.matrix(),
+                           standardize = TRUE) %>% 
+                   coef(s = "lambda.min") %>% 
+                   .[,1]
+          }
+  stopCluster(get(".revoDoParCluster", pos = doParallel:::.options))
+    rownames(a) <- return %>% 
+    dplyr::select(-date) %>% 
+    colnames()
+  return(a)
+}
+
+```
+
+
+
+
+```{r}
+return <- d %>% 
+  as_tibble() %>% 
+  mutate(year = year(date),
+         last_month = month(date)) %>% 
+  group_by(year, last_month) %>% 
+  nest() %>% 
+  mutate(lag1 = lag(data),
+         lag2 = lag(data, 2),
+         test = lead(data, 1)) %>% 
+  mutate(return = map2(lag1, data, ~rbind(.x,.y))) %>% 
+  mutate(return = map2(lag2, return, ~rbind(.x,.y))) %>% 
+  dplyr::select(year, last_month,return, test) %>% 
+  slice(3:n())
+
+factor <- factor.tmp %>% 
+  as_tibble() %>% 
+  mutate(year = year(date),
+         last_month = month(date)) %>%
+  group_by(year,last_month) %>% 
+  nest() %>% 
+  mutate(lag1 = lag(data),
+         lag2 = lag(data,2)) %>% 
+  mutate(factor = map2(lag1, data, ~rbind(.x,.y))) %>% 
+  mutate(factor = map2(lag2, factor, ~rbind(.x,.y))) %>% 
+  dplyr::select(year, last_month,factor) %>% 
+  slice(3:n()) 
+
+data.nonV <- return %>% 
+  left_join(factor, by = c("year", "last_month")) %>% 
+  mutate(return = map2(return, factor, ~semi_join(.x, .y, by="date")),
+         factor = map2(factor, return, ~semi_join(.x, .y, by="date") %>% 
+                         dplyr::select(-VIX))) %>% 
+  mutate(lasso = map2(return, factor, ~f.lasso(.x,.y))) 
+data.nonV <- data.nonV %>% 
+  mutate(replicate = map(lasso,
+                         ~diag(4) %*% MASS::ginv(as.matrix(.x)[,-1]) )) %>%
+  mutate(riskpremium = map2(lasso, replicate,
+                            ~apply(t(.y), 2 ,function(x) sum(x * .x[,1])))) %>% 
+  mutate(riskpremium = map(riskpremium, ~cbind(value=.x, key=c("TOPIX", "Value", "Size", "JPY_USD")) %>% 
+                             as_tibble() %>% 
+                             mutate(value = as.numeric(value)))) %>% 
+  mutate(highest = map(riskpremium, ~ .x %>% dplyr::filter(value == max(.x$value)) %>% .$key)) %>% 
+  mutate(top100 = map2(lasso, highest,
+                       ~filter(rownames_to_column(data.frame(.x)), min_rank(desc(Value)) <= 100))) %>% 
+  mutate(portfolio = map(top100, ~filter(.x, min_rank(desc(X.Intercept.)) <= 30)$rowname))%>% 
+  slice(1:(n()-1)) %>% 
+  mutate(ret.port = map2(test, portfolio, 
+                           ~dplyr::select(.x, one_of(.y))))%>% 
+  mutate(ret.port2 = map_dbl(ret.port, ~mean(apply(.x, 2, function(x) exp(sum(x))))))
+  #テスト部分の用意
+
+```
+
+
+
+```{r GRS}
+data.GRS <- inner_join(factor.tmp, d, by="date")
+
+return.nonV <- data.GRS %>% 
+  dplyr::select(ends_with("Equity")) %>% 
+  as.data.frame()
+factor.nonV <- data.GRS %>% 
+  dplyr::select(one_of(c("TOPIX", "Value", "Size", "JPY_USD"))) %>% 
+  as.data.frame()
+
+
+GRS.nonV <- return.nonV %>% 
+  as_tibble() %>% 
+  gather(key, value) %>% 
+  group_by(key) %>% 
+  nest() %>%
+  mutate(data = map(data, ~data.frame(return = unlist(.x), factor.nonV))) %>% 
+  mutate(lm.fit = map(data, ~lm(return ~ ., data=.x))) %>% 
+  mutate(coef = map(lm.fit, ~.x$coefficients)) 
+a <- GRS.nonV %>% 
+  dplyr::select(key, coef) %>% 
+  mutate(coef = map(coef, ~as.data.frame(.x) %>% 
+                      rownames_to_column))%>% 
+  unnest() %>% 
+  spread(rowname, .x) %>% 
+  mutate(Size = Size > median(Size),
+         TOPIX = TOPIX > median(TOPIX),
+         JPY_USD = JPY_USD > median(JPY_USD),
+         Value = Value > (median(Value))) %>% 
+  right_join(GRS.nonV, by = "key") %>% 
+  dplyr::select(-lm.fit, -coef) %>% 
+  mutate(return = map(data, ~ .x$return)) %>%
+  group_by(JPY_USD, TOPIX, Value, Size) %>% 
+  nest() %>% 
+  mutate(return.port = map(data, ~ .x$return %>% 
+                             do.call("cbind",.) %>% 
+                             rowMeans())) %>% 
+  mutate(port = 1:n())
+  
+b <- a %>% 
+  dplyr::select(port, return.port) %>% 
+  unnest() %>% 
+  group_by(port) %>% 
+  mutate(index = 1:n()) %>% 
+  spread(port, return.port) %>% 
+  dplyr::select(-index) %>% 
+  as.data.frame()
+  
+a$data[[1]]
+
+GRS.test(b, factor.mat )
+```
+
