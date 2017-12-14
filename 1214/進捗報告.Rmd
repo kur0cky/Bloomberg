@@ -2,7 +2,11 @@
 title: "進捗報告"
 author: "Yutaka Kuroki"
 date: "2017年12月13日"
-output: html_document
+header-includes:
+  - \usepackage{bm}
+output: 
+  html_document:
+    number_sections: true
 editor_options: 
   chunk_output_type: console
 ---
@@ -19,9 +23,9 @@ library(lubridate)
 ```
 
 ```{r data}
-data <- readRDS("D:/git/Bloomberg/data/lasso.RDS")
-data.ff3 <- readRDS("D:/git/Bloomberg/data/lasso_ff3.RDS")
-data.nonV <- readRDS("D:/git/Bloomberg/data/lasso_nonV.RDS")
+data <- readRDS("E:/git/Bloomberg/data/lasso.RDS")
+data.ff3 <- readRDS("E:/git/Bloomberg/data/lasso_ff3.RDS")
+data.nonV <- readRDS("E:/git/Bloomberg/data/lasso_nonV.RDS")
 ```
 
 
@@ -41,29 +45,49 @@ GRS検定とは、Gibbons, Shanken, Rossが考案した、資産価格モデル�
 市場に$N$個の資産が存在し、$K$個のファクターによるマルチ・ファクターモデルを考えるとき、任意の資産$i$のリスク・プレミアムは次の方程式を満たす
 
 $$
-\text{E}[R_i] = \beta_{i,1}\text{E}[F_1] + \dots + \beta_{i,K}\text{E}[F_K]\\
-F_k:\text{returns of the}\ k\ \text{th factor}\\
-\beta_{i,k}:\text{coefficients}
+\begin{split}
+&\text{E}[R_i] = \beta_{i,1}\text{E}[F_1] + \dots + \beta_{i,K}\text{E}[F_K]\\
+\\
+&F_k:\text{returns of the}\ k\ \text{th factor}\\
+&\beta_{i,k}:\text{coefficients}
+&\end{split}
 $$
 
 また、各パラメータ$\beta_{i,k}$の推定は以下の回帰式を当てはめることで行われる。
 
 $$
-R_{i,t} = \alpha_i + \beta_{i,1}F_{1,t} + \dots + \beta_{i,K}F_{K,t} + \varepsilon_{i,t}\\
-F_{k,t}:\text{return of the }k\text{ th factor at }t\\
-R_{i,t}:\text{return of the }i\text{ th asset at }t\\
-\alpha_i:\text{intercepts}\\
-\varepsilon_{i,t}\sim i.i.d.
+\begin{split}
+&R_{i,t} = \alpha_i + \beta_{i,1}F_{1,t} + \dots + \beta_{i,K}F_{K,t} + \varepsilon_{i,t}\\
+\\
+&F_{k,t}:\text{return of the }k\text{ th factor at }t\\
+&R_{i,t}:\text{return of the }i\text{ th asset at }t\\
+&\alpha_i:\text{intercept}\\
+&\varepsilon_{i,t}:\text{error}
+\end{split}
 $$
 ここで、想定したマルチ・ファクターモデルが正しいならば、APTの仮定（裁定機会が無い）より、推定された$\alpha_i$の推定値$\hat\alpha_i$は全て$0$であるべきである。
 
-任意の時点での誤差項$\varepsilon_{1,t},\dots,\varepsilon_{i,t},\dots,\varepsilon_{N,t}$が独立な正規分布からのサンプルであることを仮定すると、有限標本であるGRS検定統計量
+任意の時点での誤差項$\varepsilon_{1,t},\dots,\varepsilon_{i,t},\dots,\varepsilon_{N,t}$が正規分布からの独立なサンプルであることを仮定すると、有限標本であるGRS検定統計量
 
 統計量の式
+
 $$
-\dfrac{T-N-K}{N}(1 + \text{E}[F]'\hat\Omega^{-1}\text{E}[F]')^{-1}\hat\alpha'\hat\Sigma^{-1}\hat\alpha
+\begin{split}
+&\dfrac{T-N-K}{N}(1 + \text{E}[F_t]'\hat\Omega^{-1}\text{E}[F_t]')^{-1}\hat\alpha'\hat\Sigma^{-1}\hat\alpha\\
+\\
+&F_t = (F_{1,t},\dots,F_{K,t})'\\
+&\hat\Omega = \dfrac{1}{T}\sum^T_{t=1}(F_t-\text{E}[F])(F_t-\text{E}[F])'\\
+&\hat\alpha = (\hat\alpha_1,\dots,\hat\alpha_N)'\\
+&\hat\Sigma = \dfrac{1}{T}\sum^T_{t=1}\hat\varepsilon_t\hat\varepsilon_t'\\
+&\hat\varepsilon_t = (\hat\varepsilon_{1,t},\dots,\hat\varepsilon_{N,t})'\\
+\end{split}
 $$
+
 は自由度$N,\  T-N-K$のF分布に従う。
+
+$T$はファクター数と資産数の和$N+K$よりも大きいことが必要であるため、通常いくつかのポートフォリオを構築し、そのポートフォリオの収益に対して検定を行う。
+
+## 結果
 
 # 疑問
 
@@ -73,17 +97,9 @@ $$
 
 　本研究ではそのような市場の性質の変化に対応するため、窓の長さを3カ月間、オーバーラップを2カ月間、バックテスト期間をその先1カ月としたローリングを行った。このようにローリングを行う場合、マルチ・ファクターモデルの妥当性はどのように測るべきだろうか。また、FF3Fのような月次収益率を用いるのではなく日次データを使用した。月次収益率を用いた方が誤差$\varepsilon_i$の影響が少ないのかもしれないが、サンプルが少なくなってしまう。
 
-- 提案
-    - バックテスト期間における二乗誤差を見る
+- 提案：バックテスト期間における二乗誤差を見る
 
-## ファクターについて
-
-FF3F, C4F, FF5Fではいずれも、対象ユニバースから何らかの性質に基づく**ゼロポートフォリオ**を作成し、その収益率をファクターとしている。
-
-
-一方デービッド・Ｇ・ルーエンバーガーの「金融工学入門」によれば、、、
 
 # 参考文献
 
 1. Cochrane, J. (2000), "Asset Pricing"
-2. デービッド・Ｇ・ルーエンバーガー (2002), "金融工学入門"

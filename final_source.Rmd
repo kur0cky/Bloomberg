@@ -91,13 +91,28 @@ data <- return %>%
   left_join(factor, by = c("year", "last_month")) %>% 
   mutate(return = map2(return, factor, ~semi_join(.x, .y, by="date")),
          factor = map2(factor, return, ~semi_join(.x, .y, by="date"))) %>% 
-  mutate(lasso = map2(return, factor, ~f.lasso(.x,.y))) %>% 
-  mutate(replicate = map(lasso,
-                         ~diag(5) %*% MASS::ginv(as.matrix(.x)[,-1]) )) %>%   mutate(riskpremium = map2(lasso, replicate,
+  mutate(lasso = map2(return, factor, ~f.lasso(.x,.y))) %>%   mutate(replicate = map(lasso,
+                         ~diag(5) %*% MASS::ginv(as.matrix(.x)[,-1]) )) 
+data <- data %>% 
+  mutate(riskpremium = map2(lasso, replicate,
                             ~apply(t(.y), 2 ,function(x) sum(x * .x[,1])))) %>% 
   mutate(riskpremium = map(riskpremium, ~cbind(value=.x, key=c("TOPIX", "VIX", "Value", "Size", "JPY_USD")) %>% 
                              as_tibble()))%>% 
   mutate(highest = map_chr(riskpremium, ~filter(.x, value == max(value))$key)) %>% 
+  #####################################################
+  mutate(top100 = map2(lasso, highest,
+                       ~rownames_to_column(data.frame(.x)) %>% 
+                         arrange(desc(.y)) %>% 
+                         head(100)))%>% 
+  mutate(portfolio = map(top100, ~filter(.x, min_rank(desc(X.Intercept.)) <= 30)$rowname))%>% 
+  slice(1:(n()-1)) %>% 
+  mutate(ret.port = map2(test, portfolio, 
+                           ~dplyr::select(.x, one_of(.y))))%>% 
+  mutate(ret.port2 = map_dbl(ret.port, ~mean(apply(.x, 2, function(x) exp(sum(x))))))
+##################################################
+
+
+
   mutate(top100 = map2(lasso, highest,
                        ~filter(rownames_to_column(data.frame(.x)), min_rank(desc(.y)) <= 100)))%>% 
   mutate(portfolio = map(top100, ~filter(.x, min_rank(desc(X.Intercept.)) <= 30)$rowname))%>% 
@@ -200,7 +215,7 @@ b <- a %>%
   
 a$data[[1]]
 
-GRS.test(b, factor.mat ) %>% .$GRS.pval
+GRS.test(b, factor.mat ) 
 ```
 
 
