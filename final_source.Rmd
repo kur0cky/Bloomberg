@@ -93,15 +93,13 @@ data <- return %>%
          factor = map2(factor, return, ~semi_join(.x, .y, by="date"))) %>% 
   mutate(lasso = map2(return, factor, ~f.lasso(.x,.y))) %>% 
   mutate(replicate = map(lasso,
-                         ~diag(5) %*% MASS::ginv(as.matrix(.x)[,-1]) )) %>%
-  mutate(riskpremium = map2(lasso, replicate,
+                         ~diag(5) %*% MASS::ginv(as.matrix(.x)[,-1]) )) %>%   mutate(riskpremium = map2(lasso, replicate,
                             ~apply(t(.y), 2 ,function(x) sum(x * .x[,1])))) %>% 
   mutate(riskpremium = map(riskpremium, ~cbind(value=.x, key=c("TOPIX", "VIX", "Value", "Size", "JPY_USD")) %>% 
                              as_tibble()))%>% 
-  mutate(highest = map_chr(riskpremium, ~filter(.x, value == max(value))$key))
-data <- data %>% 
+  mutate(highest = map_chr(riskpremium, ~filter(.x, value == max(value))$key)) %>% 
   mutate(top100 = map2(lasso, highest,
-                       ~filter(rownames_to_column(data.frame(.x)), min_rank(desc(.y)) <= 100))) %>% 
+                       ~filter(rownames_to_column(data.frame(.x)), min_rank(desc(.y)) <= 100)))%>% 
   mutate(portfolio = map(top100, ~filter(.x, min_rank(desc(X.Intercept.)) <= 30)$rowname))%>% 
   slice(1:(n()-1)) %>% 
   mutate(ret.port = map2(test, portfolio, 

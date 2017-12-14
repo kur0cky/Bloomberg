@@ -1,0 +1,89 @@
+---
+title: "進捗報告"
+author: "Yutaka Kuroki"
+date: "2017年12月13日"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      cache = TRUE)
+```
+
+```{r library, include=FALSE}
+library(tidyverse)
+library(knitr)
+library(lubridate)
+```
+
+```{r data}
+data <- readRDS("D:/git/Bloomberg/data/lasso.RDS")
+data.ff3 <- readRDS("D:/git/Bloomberg/data/lasso_ff3.RDS")
+data.nonV <- readRDS("D:/git/Bloomberg/data/lasso_nonV.RDS")
+```
+
+
+# 今週やったこと
+
+- ソースコードの書き直し（整理、tidyverse）
+- GRS検定の実装
+- ファクターモデルのGRS検定
+- マルチ・ファクターモデルについての調査
+
+# GRS検定
+
+GRS検定とは、Gibbons, Shanken, Rossが考案した、資産価格モデルにおけるアノマリーの有無を確認する検定である。
+
+## 理論
+
+市場に$N$個の資産が存在し、$K$個のファクターによるマルチ・ファクターモデルを考えるとき、任意の資産$i$のリスク・プレミアムは次の方程式を満たす
+
+$$
+\text{E}[R_i] = \beta_{i,1}\text{E}[F_1] + \dots + \beta_{i,K}\text{E}[F_K]\\
+F_k:\text{returns of the}\ k\ \text{th factor}\\
+\beta_{i,k}:\text{coefficients}
+$$
+
+また、各パラメータ$\beta_{i,k}$の推定は以下の回帰式を当てはめることで行われる。
+
+$$
+R_{i,t} = \alpha_i + \beta_{i,1}F_{1,t} + \dots + \beta_{i,K}F_{K,t} + \varepsilon_{i,t}\\
+F_{k,t}:\text{return of the }k\text{ th factor at }t\\
+R_{i,t}:\text{return of the }i\text{ th asset at }t\\
+\alpha_i:\text{intercepts}\\
+\varepsilon_{i,t}\sim i.i.d.
+$$
+ここで、想定したマルチ・ファクターモデルが正しいならば、APTの仮定（裁定機会が無い）より、推定された$\alpha_i$の推定値$\hat\alpha_i$は全て$0$であるべきである。
+
+任意の時点での誤差項$\varepsilon_{1,t},\dots,\varepsilon_{i,t},\dots,\varepsilon_{N,t}$が独立な正規分布からのサンプルであることを仮定すると、有限標本であるGRS検定統計量
+
+統計量の式
+$$
+\dfrac{T-N-K}{N}(1 + \text{E}[F]'\hat\Omega^{-1}\text{E}[F]')^{-1}\hat\alpha'\hat\Sigma^{-1}\hat\alpha
+$$
+は自由度$N,\  T-N-K$のF分布に従う。
+
+# 疑問
+
+## GRS検定について
+
+　FF3FやC4F、FF5FではGRS検定を用いてモデルの妥当性を評価している。例えばFF3Fでは、**1963年7月から1991年1月までの月次収益率**を対象にファクターモデルの推定を行っており、その検証にはGRS検定を用いている。しかし、市場の性質は時々刻々と変化していることが予想される。つまり、ある時期では$SMB$の影響が強くても、ある時期では弱く、他のファクターの影響が強いことが予想される。全期間での回帰を行い、切片ベクトル$\hat{\alpha}=0$を帰無仮説としたGRS検定は、このような市場性質の変化を考慮した時に適切であるのか、疑問を感じる。また、この帰無仮説は裁定機会が存在しないこと、つまりアノマリーの有無に着目したものである。
+
+　本研究ではそのような市場の性質の変化に対応するため、窓の長さを3カ月間、オーバーラップを2カ月間、バックテスト期間をその先1カ月としたローリングを行った。このようにローリングを行う場合、マルチ・ファクターモデルの妥当性はどのように測るべきだろうか。また、FF3Fのような月次収益率を用いるのではなく日次データを使用した。月次収益率を用いた方が誤差$\varepsilon_i$の影響が少ないのかもしれないが、サンプルが少なくなってしまう。
+
+- 提案
+    - バックテスト期間における二乗誤差を見る
+
+## ファクターについて
+
+FF3F, C4F, FF5Fではいずれも、対象ユニバースから何らかの性質に基づく**ゼロポートフォリオ**を作成し、その収益率をファクターとしている。
+
+
+一方デービッド・Ｇ・ルーエンバーガーの「金融工学入門」によれば、、、
+
+# 参考文献
+
+1. Cochrane, J. (2000), "Asset Pricing"
+2. デービッド・Ｇ・ルーエンバーガー (2002), "金融工学入門"
