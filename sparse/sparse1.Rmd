@@ -1,0 +1,98 @@
+---
+title: "sparse"
+author: "Yutaka Kuroki"
+date: "2017年12月14日"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r tidyverse}
+library(tidyverse)
+library(lubridate)
+library('glasso') # グラフィカルLasso
+library('igraph') # プロット
+library('spaceExt') # glasso with EM
+```
+
+
+```{r assets}
+d.tmp <- read.csv("E:/Git/Bloomberg/data/assets.csv")
+rownames(d.tmp) <- d.tmp[,1]
+d <- data.frame(date = as.Date(rownames(d.tmp)[-1]),
+                apply(d.tmp[,-1] %>% na.omit(), 2, function(x){diff(log(x))}))
+```
+
+```{r factors}
+factor.tmp <- read.csv("E:/Git/Bloomberg/data/factors.csv")[,-1] %>% 
+  mutate(date = as.Date(Date)) %>% 
+  dplyr::select(-Date)
+```
+
+```{r data}
+return <- d %>% 
+  as_tibble() %>% 
+  mutate(year = year(date),
+         last_month = month(date)) %>% 
+  group_by(year, last_month) %>% 
+  nest() %>% 
+  mutate(lag1 = lag(data),
+         lag2 = lag(data, 2),
+         test = lead(data, 1)) %>%
+  mutate(return = map2(lag1, data, ~rbind(.x,.y))) %>% 
+  mutate(return = map2(lag2, return, ~rbind(.x,.y))) %>% 
+  dplyr::select(year, last_month,return, test) %>% 
+  slice(3:(n()-1))
+
+factor <- factor.tmp %>% 
+  as_tibble() %>% 
+  mutate(year = year(date),
+         last_month = month(date)) %>%
+  group_by(year,last_month) %>% 
+  nest() %>% 
+  mutate(lag1 = lag(data),
+         lag2 = lag(data,2),
+         test_f = lead(data,1)) %>% 
+  mutate(factor = map2(lag1, data, ~rbind(.x,.y))) %>% 
+  mutate(factor = map2(lag2, factor, ~rbind(.x,.y))) %>% 
+  dplyr::select(year, last_month,factor,test_f) %>% 
+  slice(3:(n()-1)) 
+
+data <- return %>% 
+  left_join(factor, by = c("year", "last_month")) %>% 
+  mutate(test = map2(test, test_f, ~semi_join(.x, .y, by="date"))) %>% 
+  mutate(return = map2(return, factor, ~semi_join(.x, .y, by="date")),
+         factor = map2(factor, return, ~semi_join(.x, .y, by="date"))) %>% 
+  mutate(rho_0.1 = map(factor,
+                          ~.x %>% 
+                            dplyr::select(-date) %>% 
+                            
+                            cov() %>% 
+                            glasso(rho=0.05)))
+
+data <- data %>% 
+  mutate(adj_0.1 = map(rho_0.1, ~ abs(.x$wi) > 0.0001)) %>% 
+  mutate(graph_0.1 = map(adj_0.1, ~graph.adjacency(.x, mode="undirected"))) %>% 
+  mutate(cov = map2(rho_0.1, return, ~.x$w)) %>% 
+  mutate(beta = map2(cov, factor, ~ .x %*% t(apply(.y[,-6],2,scale)))) %>% 
+  mutate(beta = map2(beta, return, ~ .x %*% as.matrix(.y[,-1]))) %>% 
+  mutate(yhat = map2(test_f, beta, ~ as.matrix(apply(.x[,-6],2,scale)) %*% .y)) %>% 
+  mutate(resid = map2(test, yhat, ~ .x[,-1] - .y))
+
+data$resid[[2]]^2 %>% sum()
+
+ts(data.frame(data$test[[1]][,2],data$yhat[[1]][,1])) %>% plot()
+
+a <- data.frame(scale(data$factor[[1]][,-6], scale = FALSE),
+                data$return[[1]][,-1])
+b <- lm(X9987.JT.Equity~TOPIX+VIX+Value+Size+JPY_USD-1,a)
+c <- cov(a[,1:5])
+solve(t(a[,1:5]) %*% as.matrix(a[,1:5])) %*% t(a[,1:5]) %*% a[,6]
+solve(c) %*% t(a[,1:5]) %*% a[,6]
+b
+```
+
