@@ -8,15 +8,17 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE,
+                      eval=FALSE,
+                      include=FALSE)
 ```
 
 ```{r tidyverse}
 library(tidyverse)
 library(lubridate)
-library('glasso') # グラフィカルLasso
-library('igraph') # プロット
-library('spaceExt') # glasso with EM
+library(glasso) # グラフィカルLasso
+library(igraph) # プロット
+library(spaceExt) # glasso with EM
 ```
 
 
@@ -40,6 +42,7 @@ return <- d %>%
          last_month = month(date)) %>% 
   group_by(year, last_month) %>% 
   nest() %>% 
+# ローリングの窓の長さ3ヶ月。オーバーラップ2ヶ月
   mutate(lag1 = lag(data),
          lag2 = lag(data, 2),
          test = lead(data, 1)) %>%
@@ -54,6 +57,7 @@ factor <- factor.tmp %>%
          last_month = month(date)) %>%
   group_by(year,last_month) %>% 
   nest() %>% 
+# ローリング
   mutate(lag1 = lag(data),
          lag2 = lag(data,2),
          test_f = lead(data,1)) %>% 
@@ -64,35 +68,60 @@ factor <- factor.tmp %>%
 
 data <- return %>% 
   left_join(factor, by = c("year", "last_month")) %>% 
-  mutate(test = map2(test, test_f, ~semi_join(.x, .y, by="date"))) %>% 
-  mutate(return = map2(return, factor, ~semi_join(.x, .y, by="date")),
+  mutate(test = map2(test, test_f, ~semi_join(.x, .y, by="date")), 
+         return = map2(return, factor, ~semi_join(.x, .y, by="date")),
          factor = map2(factor, return, ~semi_join(.x, .y, by="date"))) %>% 
   mutate(rho_0.1 = map(factor,
-                          ~.x %>% 
-                            dplyr::select(-date) %>% 
-                            
-                            cov() %>% 
-                            glasso(rho=0.05)))
-
-data <- data %>% 
-  mutate(adj_0.1 = map(rho_0.1, ~ abs(.x$wi) > 0.0001)) %>% 
-  mutate(graph_0.1 = map(adj_0.1, ~graph.adjacency(.x, mode="undirected"))) %>% 
-  mutate(cov = map2(rho_0.1, return, ~.x$w)) %>% 
-  mutate(beta = map2(cov, factor, ~ .x %*% t(apply(.y[,-6],2,scale)))) %>% 
-  mutate(beta = map2(beta, return, ~ .x %*% as.matrix(.y[,-1]))) %>% 
-  mutate(yhat = map2(test_f, beta, ~ as.matrix(apply(.x[,-6],2,scale)) %*% .y)) %>% 
-  mutate(resid = map2(test, yhat, ~ .x[,-1] - .y))
-
-data$resid[[2]]^2 %>% sum()
-
-ts(data.frame(data$test[[1]][,2],data$yhat[[1]][,1])) %>% plot()
-
-a <- data.frame(scale(data$factor[[1]][,-6], scale = FALSE),
-                data$return[[1]][,-1])
-b <- lm(X9987.JT.Equity~TOPIX+VIX+Value+Size+JPY_USD-1,a)
-c <- cov(a[,1:5])
-solve(t(a[,1:5]) %*% as.matrix(a[,1:5])) %*% t(a[,1:5]) %*% a[,6]
-solve(c) %*% t(a[,1:5]) %*% a[,6]
-b
+                       ~.x %>% 
+                         dplyr::select(-date) %>% 
+                         cov() %>% 
+                         glasso(rho=.2))) %>% 
+  mutate(zy = map2(factor, return, ~cov(.y[,-1], .x[,-6])))
 ```
 
+```{r hogehoge}
+hogehoge <- function(rho){
+  a <- data %>% 
+    mutate(gl = map(factor,
+                        ~.x %>% 
+                          dplyr::select(-date) %>% 
+                          cov() %>% 
+                          glasso(rho=rho))) %>% 
+    mutate(wi = map(gl, ~.x$wi)) %>% 
+    mutate(beta = map2(wi, zy, ~ .x %*% t(.y))) %>% 
+    mutate(yhat = map2(test_f, beta, ~ as.matrix(.x[,-6]) %*% .y)) %>% 
+    mutate(resid = map2(test, yhat, ~ .x[,-1] - .y))
+  return(a)
+}
+```
+
+
+```{r grid search}
+gs <- tibble(rho = c(seq(0,1,0.05),seq(2,10,1))) %>% 
+  mutate(result = map(rho, ~hogehoge(.x))) %>% 
+  mutate(sse = map_dbl(result, ~sum(unlist(.x$resid)^2)))
+
+gs %>% 
+  ggplot(aes(rho, sse)) +
+  geom_line(size=1)+
+  theme_bw()+
+  scale_x_continuous(breaks=seq(0,10,1))
+```
+
+# スライドの構成
+
+1. Introduction
+    - background
+    - motivation
+    - purpose
+2. Methods
+    - factor model
+    - Graphical Lasso
+    - precision matrix at linear regression
+3. Data
+    - assets
+    - factor
+4. Results
+    - 
+5. Discussion
+6. Conclusions
