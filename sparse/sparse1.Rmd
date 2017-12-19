@@ -30,11 +30,13 @@ d <- data.frame(date = as.Date(rownames(d.tmp)[-1]),
 ```
 
 ```{r factors}
-factor.tmp <- read.csv("E:/Git/Bloomberg/data/factors.csv")[,-1] %>% 
-  mutate(date = as.Date(Date)) %>% 
-  dplyr::select(-Date)
+#factor.tmp <- read.csv("E:/Git/Bloomberg/data/factors.csv")[,-1] %>% 
+#  mutate(date = as.Date(Date)) %>% 
+#  dplyr::select(-Date)
+factor.tmp <- read_csv("E:/Git/Bloomberg/data/factors_8.csv") %>% 
+  select(date,CMA, HML, JPY_USD, MOM, RMW, SMB, TOPIX)
 ```
-
+factor.tmp %>% mutate(Size = scale(Size),Value=scale(Value), )
 ```{r data}
 return <- d %>% 
   as_tibble() %>% 
@@ -53,7 +55,8 @@ return <- d %>%
 
 factor <- factor.tmp %>% 
   as_tibble() %>% 
-  mutate(year = year(date),
+  mutate(date = as.Date(date),
+         year = year(date),
          last_month = month(date)) %>%
   group_by(year,last_month) %>% 
   nest() %>% 
@@ -68,28 +71,26 @@ factor <- factor.tmp %>%
 
 data <- return %>% 
   left_join(factor, by = c("year", "last_month")) %>% 
-  mutate(test = map2(test, test_f, ~semi_join(.x, .y, by="date")), 
+  mutate(test = map2(test, test_f, 
+                     ~semi_join(.x, .y, by="date") %>% 
+                       select(-date) %>% 
+                       as.data.frame()), 
          return = map2(return, factor, ~semi_join(.x, .y, by="date")),
          factor = map2(factor, return, ~semi_join(.x, .y, by="date"))) %>% 
-  mutate(rho_0.1 = map(factor,
-                       ~.x %>% 
-                         dplyr::select(-date) %>% 
-                         cov() %>% 
-                         glasso(rho=.2))) %>% 
-  mutate(zy = map2(factor, return, ~cov(.y[,-1], .x[,-6])))
+  mutate(zy = map2(factor, return, ~cov(.y[,-1], .x[,-1])))
 ```
 
 ```{r hogehoge}
 hogehoge <- function(rho){
   a <- data %>% 
-    mutate(gl = map(factor,
+    mutate(glasso = map(factor,
                         ~.x %>% 
                           dplyr::select(-date) %>% 
                           cov() %>% 
                           glasso(rho=rho))) %>% 
-    mutate(wi = map(gl, ~.x$wi)) %>% 
+    mutate(wi = map(glasso, ~.x$wi)) %>% 
     mutate(beta = map2(wi, zy, ~ .x %*% t(.y))) %>% 
-    mutate(yhat = map2(test_f, beta, ~ as.matrix(.x[,-6]) %*% .y)) %>% 
+    mutate(yhat = map2(test_f, beta, ~ as.matrix(.x[,-1]) %*% .y)) %>% 
     mutate(resid = map2(test, yhat, ~ .x[,-1] - .y))
   return(a)
 }
@@ -97,15 +98,148 @@ hogehoge <- function(rho){
 
 
 ```{r grid search}
-gs <- tibble(rho = c(seq(0,1,0.05),seq(2,10,1))) %>% 
+gs <- tibble(rho = c(seq(0,0.2,0.025),seq(0.3,1,0.1),seq(2,10,1),20)) %>% 
   mutate(result = map(rho, ~hogehoge(.x))) %>% 
   mutate(sse = map_dbl(result, ~sum(unlist(.x$resid)^2)))
-
+saveRDS(gs, "E:/Git/Bloomberg/data/result_glasso.RDS")
 gs %>% 
   ggplot(aes(rho, sse)) +
   geom_line(size=1)+
   theme_bw()+
-  scale_x_continuous(breaks=seq(0,10,1))
+  scale_x_continuous(breaks=seq(0,10,1))+
+  labs(y="SSE")+
+  geom_hline(yintercept = min(gs$sse), size = 1, colour="red", linetype="dashed")+
+  annotate("text",label="SSE=434.5",x=9,y=min(gs$sse)+4)+
+  geom_vline(xintercept = 0.125, size=1, colour="blue", linetype="dashed")+
+  annotate("text", label="rho=0.1", x=2, y=490)
+
+
+```
+
+```{r plot}
+factor.tmp %>% gather(key,value,-date) %>% ggplot(aes(date,value,group=key))+geom_line()+facet_wrap(~key)
+
+best %>% select(test, yhat) %>% mutate(a = map2(test, yhat, ~ cbind(.x[,1],.y[,1]))) %>% .$a %>% .[[11]] %>% matplot(type="l")
+
+best$factor[[1]] %>% select(-date) %>% gather(key,value) %>% group_by(key) %>% summarise(mean=mean(value),sd=sd(value)) %>% ggplot(aes(sd,mean,group=key))+geom_text(aes(label=key))
+```
+
+
+```{r riskpremium}
+# SSEが最も良かったrho=0.1を使用する
+
+best <- gs %>% 
+  filter(sse == min(sse)) %>% 
+  select(result) %>% 
+  unnest() %>% 
+  select(-wi,-zy)
+
+# 各期のno.1ファクターを狙った
+a <- best %>% 
+  mutate(ratio = map(factor,
+                     ~ .x %>%
+                       select(-date) %>% 
+                       gather(key,value) %>% 
+                       group_by(key) %>% 
+                       summarise(ratio = mean(value)/sd(value)))) %>% 
+  mutate(highest = map_dbl(ratio, 
+                       ~ which(.x$ratio == max(.x$ratio)))) %>% 
+  mutate(top100 = map2(beta,highest,
+                       ~ .x[.y,] %>% 
+                         sort(decreasing=TRUE) %>%
+                         head(30) %>% 
+                         names())) %>% 
+  mutate(ret.port = map2_dbl(test, top100,
+                       ~ .x %>% 
+                         select(one_of(.y)) %>% 
+                         apply(2,function(x) exp(sum(x))) %>% 
+                         mean()))
+
+# 各ファクターへの係数top30
+a <- best %>% 
+  mutate(CMA = map(beta,
+                     ~ .x[1,] %>% 
+                       sort(decreasing=TRUE) %>% 
+                       head(30) %>% 
+                       names()),
+         HML = map(beta,
+                     ~ .x[2,] %>% 
+                       sort(decreasing=TRUE) %>% 
+                       head(30) %>% 
+                       names()),
+         JPY_USD = map(beta,
+                     ~ .x[3,] %>% 
+                       sort(decreasing=TRUE) %>% 
+                       head(30) %>% 
+                       names()),
+         MOM = map(beta,
+                     ~ .x[4,] %>% 
+                       sort(decreasing=TRUE) %>% 
+                       head(30) %>% 
+                       names()),
+         RMW = map(beta,
+                     ~ .x[5,] %>% 
+                       sort(decreasing=TRUE) %>% 
+                       head(30) %>% 
+                       names()),
+         SMB = map(beta,
+                     ~ .x[6,] %>% 
+                       sort(decreasing=TRUE) %>% 
+                       head(30) %>% 
+                       names()),
+         TOPIX = map(beta,
+                     ~ .x[7,] %>% 
+                       sort(decreasing=TRUE) %>% 
+                       head(30) %>% 
+                       names())) %>% 
+  mutate(ret.CMA = map2_dbl(test, CMA,
+                            ~ .x %>% 
+                              select(one_of(.y)) %>% 
+                              apply(2, function(x) exp(sum(x))) %>% 
+                              mean()),
+         ret.HML = map2_dbl(test, HML,
+                            ~ .x %>% 
+                              select(one_of(.y)) %>% 
+                              apply(2, function(x) exp(sum(x))) %>% 
+                              mean()),
+         ret.JPY_USD = map2_dbl(test, JPY_USD,
+                            ~ .x %>% 
+                              select(one_of(.y)) %>% 
+                              apply(2, function(x) exp(sum(x))) %>% 
+                              mean()),
+         ret.MOM = map2_dbl(test, MOM,
+                            ~ .x %>% 
+                              select(one_of(.y)) %>% 
+                              apply(2, function(x) exp(sum(x))) %>% 
+                              mean()),
+         ret.RMW = map2_dbl(test, RMW,
+                            ~ .x %>% 
+                              select(one_of(.y)) %>% 
+                              apply(2, function(x) exp(sum(x))) %>% 
+                              mean()),
+         ret.SMB = map2_dbl(test, SMB,
+                            ~ .x %>% 
+                              select(one_of(.y)) %>% 
+                              apply(2, function(x) exp(sum(x))) %>% 
+                              mean()),
+         ret.TOPIX = map2_dbl(test, TOPIX,
+                            ~ .x %>% 
+                              select(one_of(.y)) %>% 
+                              apply(2, function(x) exp(sum(x))) %>% 
+                              mean())) %>% 
+  select(year, last_month, starts_with("ret"), -return) %>% 
+  mutate_at(vars(starts_with("ret")), cumprod) %>% 
+  gather(key, value, -year, -last_month) %>% 
+  mutate(last_month = formatC(last_month, width=2, flag="0")) %>% 
+  mutate(date = ymd(as.numeric(str_c(year,last_month,"01"))))
+
+cb_palette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00")
+a %>% 
+  ggplot(aes(date, value, group=key, colour=key))+
+  geom_line(size=1)+
+  theme_bw()+
+  scale_color_manual(values=cb_palette)
+
 ```
 
 # スライドの構成

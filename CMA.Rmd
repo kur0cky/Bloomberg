@@ -89,15 +89,17 @@ CMA <- d %>%
 ```
 
 
-```{ factors}
+```{r factors}
 factor.tmp <- factor.tmp %>% 
   inner_join(RMW, by="date") %>% 
   inner_join(MOM, by="date") %>% 
   inner_join(CMA, by="date")
 factor.tmp <- factor.tmp %>% 
-  mutate(CMA = scale(CMA),
-         RMW = scale(RMW),
-         MOM = scale(MOM))
-saveRDS(factor.tmp, "E:/Git/Bloomberg/data/factors.RDS")
+  mutate(CMA = as.vector(scale(CMA)),
+         RMW = as.vector(scale(RMW)),
+         MOM = as.vector(scale(MOM)))
+factor.tmp <- data.frame(factor.tmp)
+write.csv(factor.tmp, "E:/Git/Bloomberg/data/factors_8.csv")
+factor.tmp <- read_csv("E:/Git/Bloomberg/data/factors_8.csv")
 ```
 
