@@ -31,9 +31,8 @@ d <- data.frame(date = as.Date(rownames(d.tmp)[-1]),
 ```
 
 ```{r factor}
-factor.tmp <- read.csv("E:/Git/Bloomberg/data/factors.csv")[,-1] %>% 
-  mutate(date = as.Date(Date)) %>% 
-  dplyr::select(-Date)
+factor.tmp <- read_csv("E:/Git/Bloomberg/data/factors_8.csv") %>% 
+  mutate(date = as.Date(date)) 
 ```
 
 ```{r lasso}
@@ -89,8 +88,8 @@ factor <- factor.tmp %>%
 
 data <- return %>% 
   left_join(factor, by = c("year", "last_month")) %>% 
-  mutate(return = map2(return, factor, ~semi_join(.x, .y, by="date")),
-         factor = map2(factor, return, ~semi_join(.x, .y, by="date"))) %>% 
+  mutate(return = map2(return, factor, ~semi_join(.x, .y, by="date")) %>% as.matrix(),
+         factor = map2(factor, return, ~semi_join(.x, .y, by="date")) %>% as.matrix()) %>% 
   mutate(lasso = map2(return, factor, ~f.lasso(.x,.y))) %>%   mutate(replicate = map(lasso,
                          ~diag(5) %*% MASS::ginv(as.matrix(.x)[,-1]) )) 
 data <- data %>% 
