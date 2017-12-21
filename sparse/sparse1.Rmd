@@ -100,10 +100,12 @@ hogehoge <- function(rho){
 
 
 ```{r grid search}
-gs <- tibble(rho = c(seq(0,0.2,0.025),seq(0.3,1,0.1))) %>% 
-  mutate(result = map(rho, ~hogehoge(.x))) %>% 
-  mutate(sse = map_dbl(result, ~sum(.x$resid^2)))
-saveRDS(gs, "E:/Git/Bloomberg/data/result_glasso.RDS")
+#gs <- tibble(rho = c(seq(0,0.2,0.025),seq(0.3,1,0.1))) %>% 
+#  mutate(result = map(rho, ~hogehoge(.x))) %>% 
+#  mutate(sse = map_dbl(result, ~sum(.x$resid^2)))
+#saveRDS(gs, "E:/Git/Bloomberg/data/result_glasso.RDS")
+gs <- read_rds("E:/Git/Bloomberg/data/result_glasso.RDS")
+read_rds("data/result_glasso.RDS")
 ```
 
 ```{r plot}
