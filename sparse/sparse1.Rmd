@@ -36,7 +36,8 @@ d <- data.frame(date = as.Date(rownames(d.tmp)[-1]),
 #  dplyr::select(-Date)
 factor.tmp <- read_csv("E:/Git/Bloomberg/data/factors_8.csv") %>% 
   rename(MKT = TOPIX) %>% 
-  select(date,CMA, HML, MOM, RMW, SMB, MKT)
+  select(date,CMA, HML, MOM, RMW, SMB, MKT) %>% 
+  mutate(date = as.Date(date))
 ```
 factor.tmp %>% mutate(Size = scale(Size),Value=scale(Value), )
 ```{r data}
@@ -100,12 +101,11 @@ hogehoge <- function(rho){
 
 
 ```{r grid search}
-#gs <- tibble(rho = c(seq(0,0.2,0.025),seq(0.3,1,0.1))) %>% 
-#  mutate(result = map(rho, ~hogehoge(.x))) %>% 
-#  mutate(sse = map_dbl(result, ~sum(.x$resid^2)))
-#saveRDS(gs, "E:/Git/Bloomberg/data/result_glasso.RDS")
+gs <- tibble(rho = c(seq(0,0.2,0.025),seq(0.3,1,0.1))) %>% 
+  mutate(result = map(rho, ~hogehoge(.x))) 
+
+saveRDS(gs, "E:/Git/Bloomberg/data/result_glasso.RDS")
 gs <- read_rds("E:/Git/Bloomberg/data/result_glasso.RDS")
-read_rds("data/result_glasso.RDS")
 ```
 
 ```{r plot}
@@ -151,32 +151,32 @@ a <- best %>%
   mutate(CMA = map(beta,
                      ~ .x[1,] %>% 
                        sort(decreasing=TRUE) %>% 
-                       head(30) %>% 
+                       head(100) %>% 
                        names()),
          HML = map(beta,
                      ~ .x[2,] %>% 
                        sort(decreasing=TRUE) %>% 
-                       head(30) %>% 
+                       head(100) %>% 
                        names()),
          MOM = map(beta,
                      ~ .x[3,] %>% 
                        sort(decreasing=TRUE) %>% 
-                       head(30) %>% 
+                       head(100) %>% 
                        names()),
          RMW = map(beta,
                      ~ .x[4,] %>% 
                        sort(decreasing=TRUE) %>% 
-                       head(30) %>% 
+                       head(100) %>% 
                        names()),
          SMB = map(beta,
                      ~ .x[5,] %>% 
                        sort(decreasing=TRUE) %>% 
-                       head(30) %>% 
+                       head(100) %>% 
                        names()),
          MKT = map(beta,
                      ~ .x[6,] %>% 
                        sort(decreasing=TRUE) %>% 
-                       head(30) %>% 
+                       head(100) %>% 
                        names())) %>% 
   mutate(ret.CMA = map2_dbl(test, CMA,
                             ~ .x %>% 
@@ -209,7 +209,7 @@ a <- best %>%
                               apply(2, function(x) exp(sum(x))) %>% 
                               mean())) %>% 
   select(year, last_month, starts_with("ret"), -return) %>% 
-  mutate_at(vars(starts_with("ret")), cumprod) %>% 
+  #mutate_at(vars(starts_with("ret")), cumprod) %>% #累積のときだけ
   rbind(c(2015,1,1,1,1,1,1,1),c(2015,2,1,1,1,1,1,1),.,c(2017,5,1,1,1,1,1,1),c(2017,6,1,1,1,1,1,1)) %>% 
   mutate(year = lead(year,2),
          last_month = lead(last_month,2)) %>% 
@@ -223,6 +223,11 @@ a %>%
   theme_bw()+
   scale_color_manual(values=cb_palette)
 
+a %>% 
+  ggplot(aes(key, value))+
+  geom_boxplot()+
+  theme_bw()
+  
 ```
 
 # スライドの構成
@@ -385,15 +390,44 @@ wl <- best %>%
                         gather(ticker,value,-factor))) %>% 
   select(winner, loser)
 
-wl %>% 
+wl <- wl %>% 
   gather(key, value) %>% 
-  unnest() %>% 
-  ggplot(aes(value, group=key))+
-  geom_density()+
-  facet_wrap(~factor)+
-  theme_bw()+
-  theme(strip.background = element_rect(fill="aquamarine"))+
-  ggtitle("Winner  vs  Loser")
+  unnest() 
+wl%>% 
+  mutate(ticker = rep(1:(n()/6),each=6) )%>% 
+  spread(factor, value) %>% 
+  select(-ticker) %>% 
+  ggpairs(aes(colour=key))+
+  theme_bw()
+
+ggpairs(
+    wl,
+    upper = list(continuous = wrap("cor", colour="black", size = 5),
+                 combo = "box_no_facet", discrete = "facetbar", na = "na"),
+    diag = list(continuous = wrap("barDiag", fill="skyblue", colour="blue", size=0.3), discrete = "barDiag", na = "naDiag"),
+    lower = list(continuous = wrap("points",size=0.1), combo = "dot_no_facet")
+)
 ```
 
+
+```{r}
+tmp <- proc.time
+x <- 
+proc.time() - tmp
+```
+
+```{r}
+x <- best$glasso[[1]]$wi
+rownames(x) <- c("CMA",  "HML",  "MOM",  "RMW" , "SMB",  "MKT")
+colnames(x) <- c("CMA",  "HML",  "MOM",  "RMW" , "SMB",  "MKT")
+(abs(x) > 0.000001) %>% 
+  graph.adjacency(mode="undirected", diag=FALSE) %>% 
+  plot()
+y <- best$glasso[[1]]$w
+rownames(y) <- c("CMA",  "HML",  "MOM",  "RMW" , "SMB",  "MKT")
+colnames(y) <- c("CMA",  "HML",  "MOM",  "RMW" , "SMB",  "MKT")
+(abs(y) > 0.000001) %>% 
+  graph.adjacency(mode="undirected", diag=FALSE) %>% 
+  plot()
+```
 
