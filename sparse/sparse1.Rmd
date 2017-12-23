@@ -124,7 +124,9 @@ best <- gs %>%
   select(result) %>% 
   unnest() %>% 
   select(-wi,-zy)
-
+#best <- gs[6,] %>%
+#  unnest() %>% 
+#  select(-rho)
 # 各期のno.1ファクターを狙った
 a <- best %>% 
   mutate(ratio = map(factor,
@@ -431,3 +433,46 @@ colnames(y) <- c("CMA",  "HML",  "MOM",  "RMW" , "SMB",  "MKT")
   plot()
 ```
 
+
+
+# 実験1
+
+ベータの合計top100のポートフォリオ
+lowest100 よりもいい
+```{r}
+best %>% 
+  mutate(sum_beta_top100 = map(beta, 
+                               ~ apply(.x,2,sum) %>% 
+                                 sort(decreasing = TRUE) %>% 
+                                 head(100) %>% 
+                                 names())) %>% 
+  mutate(ret.port = map2_dbl(test, sum_beta_top100,
+                         ~ select(.x, one_of(.y)) %>% 
+                           apply(2, function(x) exp(sum(x))) %>% 
+                           mean())) %>% 
+  select(ret.port) %>% 
+  cumprod() %>%
+  ts.plot()
+  
+```
+
+
+# 実験2
+
+```{r}
+resid <- best %>% 
+  mutate(resid_top100 = map(resid,
+                            ~apply(.x, 2, function(x) exp(sum(x))) %>% 
+                              sort(decreasing = TRUE) %>% 
+                              head(100) %>% 
+                              names())) %>% 
+  mutate(ret.port = map2_dbl(test, resid_top100,
+                         ~ select(.x, one_of(.y)) %>% 
+                           apply(2, function(x) exp(sum(x))) %>% 
+                           mean())) %>% 
+  select(ret.port) %>% 
+  cumprod() %>%
+  ts.plot()
+```
+
+best$test %>%map(~ apply(.x, 2, function(x) exp(sum(x))) %>% mean()) %>% unlist() %>% cumprod()
