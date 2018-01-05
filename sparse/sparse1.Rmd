@@ -256,10 +256,16 @@ a %>%
 
 lm.fit<- data %>% 
   mutate(lm = map2(factor, return,
-                   ~ solve(t(.x %>% mutate(date=1)) %*% as.matrix(.x %>% mutate(date=1))) %*% t(.x %>% mutate(date = 1)) %*% as.matrix(.y[,-1]))) %>% 
+                   ~ solve(t(.x %>% mutate(date=1)) %*% as.matrix(.x %>% mutate(date=1))) %*% t(.x %>% mutate(date = 1)) %*% as.matrix(.y[,-1])),
+         no_intercept = map2(factor, return,
+                   ~ solve(t(.x %>% select(-date)) %*% as.matrix(.x %>% select(-date))) %*% t(.x %>% select(-date)) %*% as.matrix(.y[,-1]))) %>% 
   mutate(yhat_lm = map2(lm, test_f,
-                        ~as.matrix(.y %>% mutate(date=1)) %*% as.matrix(.x))) %>% 
+                        ~as.matrix(.y %>% mutate(date=1)) %*% as.matrix(.x)),
+         yhat_no_intercept = map2(no_intercept, test_f,
+                        ~as.matrix(.y %>% select(-date)) %*% as.matrix(.x))) %>% 
   mutate(resid_lm = map2(test, yhat_lm,
+                         ~ (.x - .y)^2),
+         resid_no_intercept = map2(test, yhat_no_intercept,
                          ~ (.x - .y)^2)) %>% 
   mutate(resid = map_dbl(resid_lm, sum))
 lm.fit$resid %>% sum()
@@ -288,6 +294,33 @@ lm.fit %>%
 best %>% 
   mutate(resid = map2(test, yhat, ~.x-.y)) %>% select(resid) %>% unlist() %>% summary()
 ```
+
+```{r}
+lmrob(X9987.JT.Equity~.,data=data.frame(data$return[[1]][,2],data$factor[[1]][,-1])) %>% summary()
+
+lmrob.fit <- list()
+for(i in 1:nrow(data)){
+  lmrob.fit[[i]] <- apply(data$return[[i]][,-1], 2, function(x) lmrob(x ~ data$factor[[i]]$CMA+
+                                                                        data$factor[[i]]$HML+
+                                                                        data$factor[[i]]$MOM+
+                                                                        data$factor[[i]]$RMW+
+                                                                        data$factor[[i]]$SMB+
+                                                                        data$factor[[i]]$MKT)$coefficients)
+}
+lmrob.fit <- tibble(fit = lmrob.fit,
+       test_f = data$test_f,
+       test = data$test)
+
+
+tmp <- lmrob.fit %>% 
+  mutate(yhat = map2(fit, test_f,
+                     ~ t(.x) %*% t(.y %>% mutate(date=1)) %>% 
+                       t()),
+         resid = map2(test, yhat, ~ .x-.y),
+         MSE = map_dbl(resid, ~ mean(.x^2)))
+
+```
+
 
 # top100
 
@@ -476,3 +509,54 @@ resid <- best %>%
 ```
 
 best$test %>%map(~ apply(.x, 2, function(x) exp(sum(x))) %>% mean()) %>% unlist() %>% cumprod()
+
+
+# 
+```{r}
+a <- data.frame(rho = gs$rho)
+for(i in 1:17) {
+  a$value[i] <- mean(unlist(map(gs$result[[i]]$resid, ~ mean(as.matrix(.x)^2, na.rm=TRUE))))
+  }
+
+a %>% 
+  ggplot(aes(rho, value))+
+  theme_bw()+
+  geom_vline(xintercept=0.125, colour = "red", size=1, linetype="dashed")+
+  geom_hline(yintercept=min(a$value), colour="red", size=1, linetype="dashed")+
+  geom_line(size=1)+
+  geom_hline(yintercept = 0.0004312, colour = "gray", size=0.8)+
+  geom_hline(yintercept = 0.0004245, colour = "gray", size=0.8)+
+  geom_hline(yintercept = 0.0004171, colour = "gray", size=0.8)+
+  annotate("text",label="切片なし重回帰", x=0.75,y=0.000423, size=4)+
+  annotate("text",label="線形重回帰", x=0.7,y=0.000433, size=4)+
+  annotate("text",label="ロバスト線形回帰", x=0.8,y=0.000416, size=4)
+```
+
+
+```{r}
+tmp <- list()
+tmp <- gs$result
+tmp2 <- list()
+for(i in 1:nrow(gs)){
+tmp2[[i]] <- tmp[[i]] %>% 
+  mutate(yhat = map2(factor, beta,
+                     ~ as.matrix(.x[,-1]) %*% .y)) %>% 
+  mutate(resid = map2(return, yhat,
+                      ~.x[,-1] - .y)) %>% 
+  mutate(MSE = map_dbl(resid,
+                   ~ mean(.x^2))) %>% 
+  .$MSE %>% 
+  mean()
+}
+
+tmp2
+
+tmp2$MSE %>% mean()
+
+    mutate(wi = map(glasso, ~.x$wi)) %>% 
+    mutate(beta = map2(wi, zy, ~ .x %*% t(.y))) %>% 
+    mutate(yhat = map2(test_f, beta, ~ as.matrix(.x[,-1]) %*% .y)) %>% 
+    mutate(resid = map2(test, yhat, ~ .x - .y))
+  return(a)
+```
+
