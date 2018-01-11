@@ -115,6 +115,14 @@ best %>% select(test, yhat) %>% mutate(a = map2(test, yhat, ~ cbind(.x[,1],.y[,1
 best$factor[[1]] %>% select(-date) %>% gather(key,value) %>% group_by(key) %>% summarise(mean=mean(value),sd=sd(value)) %>% ggplot(aes(sd,mean,group=key))+geom_text(aes(label=key))
 ```
 
+```{r}
+gs$result[[6]]$wi %>% 
+  map(~solve(.x)) %>% 
+  do.call("rbind",.) %>%
+  mutate(year = cor$year,
+         month = cor$month)
+```
+
 
 ```{r riskpremium}
 # SSEが最も良かったrho=0.1を使用する
@@ -381,7 +389,45 @@ pm <- pm +
 p_(pm)
 ```
 
+
+```{r FF5_cor}
+library(GRS.test)
+data(data)
+pm <- ggpairs(
+    data[1:342,] %>% select(CMA, HML, MOM, RMW, SMB, MKT = RM_RF),
+    upper = list(continuous = wrap("cor", colour="black", size = 5),
+                 combo = "box_no_facet", discrete = "facetbar", na = "na"),
+    diag = list(continuous = wrap("barDiag", fill="skyblue", colour="blue", size=0.3), discrete = "barDiag", na = "naDiag"),
+    lower = list(continuous = wrap("points",size=0.1), combo = "dot_no_facet")
+)
+pm <- pm +
+  theme_bw()+
+  theme(strip.background = element_rect(fill="aquamarine"),
+        strip.text = element_text(face = "bold", size=rel(1)))
+
+pm
+```
+
+```{r}
+cor <- factor.tmp %>% 
+  mutate(year = year(date), month = month(date)) %>%
+  group_by(year,month) %>% 
+  nest() %>%
+  mutate(cor = map(data, ~.x %>% select(-date) %>% 
+                     cor() %>%
+                     as.data.frame() %>%
+                     rownames_to_column %>%  
+                     gather(key, value, -rowname) %>% 
+                     filter(value != 1))) %>% select(year,month, cor)%>% 
+  unnest() 
+%>% 
+  mutate(date = make_datetime(year,month)) %>%
+  ggplot(aes(date, value,group=rowname,colour = key))+
+  geom_line()+facet_grid(key~rowname)
+```
+
 ```{r gridsearch}
+
 gs %>% 
   ggplot(aes(rho, sse)) +
   geom_line(size=1)+
@@ -392,6 +438,7 @@ gs %>%
   annotate("text",label="SSE=386.1207", x=0.8,y=min(gs$sse)+4, size=5)+
   geom_vline(xintercept = 0.125, size=1.2, colour="blue", linetype="dashed")+
   annotate("text", label="rho=0.125", x=0.2, y=490., size=5)
+
 
 ```
 
@@ -520,7 +567,6 @@ for(i in 1:17) {
 
 a %>% 
   ggplot(aes(rho, value))+
-  theme_bw()+
   geom_vline(xintercept=0.125, colour = "red", size=1, linetype="dashed")+
   geom_hline(yintercept=min(a$value), colour="red", size=1, linetype="dashed")+
   geom_line(size=1)+
@@ -529,7 +575,8 @@ a %>%
   geom_hline(yintercept = 0.0004171, colour = "gray", size=0.8)+
   annotate("text",label="切片なし重回帰", x=0.75,y=0.000423, size=4)+
   annotate("text",label="線形重回帰", x=0.7,y=0.000433, size=4)+
-  annotate("text",label="ロバスト線形回帰", x=0.8,y=0.000416, size=4)
+  annotate("text",label="ロバスト線形回帰", x=0.8,y=0.000416, size=4)+
+  theme_bw()
 ```
 
 
