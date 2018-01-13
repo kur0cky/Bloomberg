@@ -101,10 +101,10 @@ hogehoge <- function(rho){
 
 
 ```{r grid search}
-gs <- tibble(rho = c(seq(0,0.2,0.025),seq(0.3,1,0.1))) %>% 
-  mutate(result = map(rho, ~hogehoge(.x))) 
-
-saveRDS(gs, "E:/Git/Bloomberg/data/result_glasso.RDS")
+# gs <- tibble(rho = c(seq(0,0.2,0.025),seq(0.3,1,0.1))) %>% 
+#   mutate(result = map(rho, ~hogehoge(.x))) 
+# 
+# saveRDS(gs, "E:/Git/Bloomberg/data/result_glasso.RDS")
 gs <- read_rds("E:/Git/Bloomberg/data/result_glasso.RDS")
 ```
 
@@ -445,7 +445,7 @@ gs %>%
 # winner loser
 
 ```{r}
-wl <- best %>% 
+wl <- gs$result[[6]] %>% 
   mutate(test.ret = map(test,
                         ~ apply(.x,2,function(x) exp(sum(x))))) %>% 
   mutate(winner = map(test.ret, 
@@ -605,5 +605,45 @@ tmp2$MSE %>% mean()
     mutate(yhat = map2(test_f, beta, ~ as.matrix(.x[,-1]) %*% .y)) %>% 
     mutate(resid = map2(test, yhat, ~ .x - .y))
   return(a)
+```
+
+## MKT以外のbeta 合計0以上
+
+```{r}
+tmp <- gs$result[[6]] %>% 
+  mutate(posi = map(beta,
+                      ~ .x[-6,] %>% 
+                        as_tibble() %>% 
+                        mutate(factor = c("CMA", "HML", "MOM", "RMW", "SMB")) %>% 
+                        gather(key, value, -factor) %>% 
+                        group_by(key) %>% 
+                        summarise(value = sum(value)) %>% 
+                        filter(value > 0) %>% 
+                        .$key),
+         nega = map(beta,
+                      ~ .x[-6,] %>% 
+                        as_tibble() %>% 
+                        mutate(factor = c("CMA", "HML", "MOM", "RMW", "SMB")) %>% 
+                        gather(key, value, -factor) %>% 
+                        group_by(key) %>% 
+                        summarise(value = sum(value)) %>% 
+                        filter(value < 0) %>% 
+                        .$key))  
+
+tmp %>% 
+  mutate(perform_posi = map2_dbl(test, posi,
+              ~ .x %>% select(one_of(.y)) %>% 
+                           apply(2, function(x) exp(sum(x))) %>% 
+                           mean()),
+         perform_nega = map2_dbl(test, nega,
+              ~ .x %>% select(one_of(.y)) %>% 
+                           apply(2, function(x) exp(sum(x))) %>% 
+                           mean())) %>% 
+  mutate(date = make_date(year,last_month)) %>% 
+  ggplot(aes(date))+
+  geom_line(aes(y=cumprod(perform_posi)), colour = "black", size=0.8)+
+  geom_line(aes(y=cumprod(perform_nega)), colour="black", size=0.8, linetype="dashed")+
+  theme_bw()+
+  labs(x = "date", y = "performance")
 ```
 
