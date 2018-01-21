@@ -367,7 +367,7 @@ factor.tmp %>%
   ggplot(aes(date,value,group=key))+
   geom_line(size=0.2)+
   scale_x_date(date_label="%Y")+
-  facet_wrap(~key)+
+  facet_wrap(~key, nrow=6, scale = "free_y")+
   theme_bw()+
   theme(strip.background = element_rect(fill="aquamarine"))
 ```
@@ -386,15 +386,17 @@ pm <- pm +
   theme(strip.background = element_rect(fill="aquamarine"),
         strip.text = element_text(face = "bold", size=rel(1)))
 
-p_(pm)
+pm
 ```
 
 
 ```{r FF5_cor}
 library(GRS.test)
 data(data)
+data <- apply(data,2,scale) %>% 
+  as_tibble
 pm <- ggpairs(
-    data[1:342,] %>% select(CMA, HML, MOM, RMW, SMB, MKT = RM_RF),
+    data  %>%  select(CMA, HML, MOM, RMW, SMB, MKT = RM_RF),
     upper = list(continuous = wrap("cor", colour="black", size = 5),
                  combo = "box_no_facet", discrete = "facetbar", na = "na"),
     diag = list(continuous = wrap("barDiag", fill="skyblue", colour="blue", size=0.3), discrete = "barDiag", na = "naDiag"),
@@ -576,7 +578,8 @@ a %>%
   annotate("text",label="切片なし重回帰", x=0.75,y=0.000423, size=4)+
   annotate("text",label="線形重回帰", x=0.7,y=0.000433, size=4)+
   annotate("text",label="ロバスト線形回帰", x=0.8,y=0.000416, size=4)+
-  theme_bw()
+  theme_bw()+
+  labs(y = "MSE")
 ```
 
 
@@ -639,7 +642,7 @@ tmp %>%
               ~ .x %>% select(one_of(.y)) %>% 
                            apply(2, function(x) exp(sum(x))) %>% 
                            mean())) %>% 
-  mutate(date = make_date(year,last_month)) %>% 
+  mutate(date = make_date(year,last_month))%>% 
   ggplot(aes(date))+
   geom_line(aes(y=cumprod(perform_posi)), colour = "black", size=0.8)+
   geom_line(aes(y=cumprod(perform_nega)), colour="black", size=0.8, linetype="dashed")+
