@@ -53,9 +53,21 @@ ggnet2(net, color = "color")
 ```{r}
 #gs <- read_rds("E:/Git/Bloomberg/data/result_glasso.RDS")
 data <- gs$result[[6]] 
+a <- list()
+for(i in 1:nrow(data)){
+  a[[i]] <- abs(data$glasso[[i]]$wi) > 0.0000001
+}
+a %>% 
+  map(~ abs(.x) > 0.00000001) %>% 
+  map(~ as_tibble(.x) %>% 
+        mutate(index=1:6) %>% 
+        gather(key,value,-index)) %>% 
+  do.call("rbind",.) %>% 
+  group_by(index, key) %>% 
+  summarise(sum=sum(value)) %>% 
+  ungroup() %>% 
+  spread(key, sum)
 
-tmp <- data$glasso[[1]]$wi %>% 
-  as.matrix() 
 for(i in 1:6){
   for(j in 1:6){
     tmp[i,j] <-  (tmp[i,j]/sqrt(tmp[i,i]*tmp[j,j]))
