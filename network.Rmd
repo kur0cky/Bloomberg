@@ -17,6 +17,9 @@ library(lubridate)
 library(GGally)
 library(ggnetwork)
 library(sna)
+library(igraph)
+library(intergraph)
+library(ggnet)
 ```
 
 ```{r}
@@ -57,6 +60,9 @@ a <- list()
 for(i in 1:nrow(data)){
   a[[i]] <- abs(data$glasso[[i]]$wi) > 0.0000001
 }
+
+tmp <- data$glasso[[1]]$wi %>% 
+  as.matrix()
 a %>% 
   map(~ abs(.x) > 0.00000001) %>% 
   map(~ as_tibble(.x) %>% 
@@ -119,5 +125,37 @@ ggplot(tmp4,aes(x,y,xend=xend,yend=yend))+
 
 ```{r}
 0.5*log(2*pi/tmp[1,1]) + 1/2*tmp[1,1]*(tmp[,1] %*% )^2
+```
+
+
+次数中心性
+
+```{r}
+as.numeric(abs(tmp) > 0.00000001) %>% 
+  matrix(6) %>% 
+  apply(1,sum)
+
+tmp <- list()
+tmp <- map(data$glasso,
+           ~ .x$wi %>% 
+             as.matrix)
+for(k in 1:26){
+  for(i in 1:6){
+    for(j in 1:6){
+      tmp[[k]][i,j] <-  (tmp[[k]][i,j]/sqrt(tmp[[k]][i,i]*tmp[[k]][j,j]))
+    }
+  }
+}
+for(i in 1:26){
+  colnames(tmp[[i]]) <- colnames(data$factor[[1]][,-1])
+  rownames(tmp[[i]]) <- colnames(data$factor[[1]][,-1])
+  diag(tmp[[i]]) <- 0
+}
+
+centrality <- map(tmp, ~ as.numeric(abs(.x)>0.00000001) %>% 
+      matrix(6) %>% 
+      apply(1,sum)) %>% 
+  do.call("rbind",.)
+colnames(centrality) <- colnames(data$factor[[1]][,-1])
 ```
 
